@@ -9,9 +9,9 @@ with your friends.
 - **Player cards** — self-assigned PAC/SHO/PAS/DRI/DEF/PHY stats, 12 positions,
   overall auto-calculated with position-weighted averages, and card tiers
   (Bronze < 65, Silver 65–74, Gold 75+) on an original diamond-shield card design.
-- **PlayStyles+** — 32 styles across 6 categories (Scoring, Passing,
+- **PlayStyles+** — 36 styles across 6 categories (Scoring, Passing,
   Ball Control, Defending, Physical, Goalkeeper), max 4 per player, shown as
-  icon badges on the card.
+  custom icon badges on the card.
 - **Teams** — create a team (creator becomes captain) and invite friends with a
   6-character join code.
 - **Lineups** — captains pick 6v6 (2-2-1, 2-1-2, 3-1-1, 1-2-2) or 10v10
@@ -48,10 +48,10 @@ npm start              # then press i / a, or scan the QR with Expo Go
 
 ### 3. PlayStyle icons
 
-`assets/playstyles/` ships with generated placeholder PNGs so the app runs out
-of the box. Replace them with your own icon PNGs using the same filenames
-(see `assets/playstyles/README.md`). Lookups go through the `ICON_IMAGES` dict
-in `src/constants/playstyleIcons.ts`.
+`assets/playstyles/` contains the custom icon set (one PNG per style,
+kebab-case filenames — see `assets/playstyles/README.md`). Lookups go through
+the `ICON_IMAGES` dict in `src/constants/playstyleIcons.ts`; to swap an icon,
+overwrite the file and keep the filename.
 
 ## Project layout
 

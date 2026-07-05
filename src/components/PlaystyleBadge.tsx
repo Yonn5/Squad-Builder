@@ -5,9 +5,9 @@ import { getPlaystyleIcon } from "../constants/playstyleIcons";
 import { categoryColors } from "../theme";
 
 /**
- * Small shield-shaped badge for a PlayStyle+ icon, edged in its
- * category colour. Falls back to the style's initials if no icon
- * image is registered.
+ * PlayStyle+ badge. The icon art already includes the diamond-shield
+ * badge shape, so it renders plain; the drawn shield is only the
+ * fallback for styles without a registered icon.
  */
 export function PlaystyleBadge({
   name,
@@ -17,13 +17,23 @@ export function PlaystyleBadge({
   size?: number;
 }) {
   const icon = getPlaystyleIcon(name);
+
+  if (icon) {
+    return (
+      <Image
+        source={icon}
+        style={{ width: size, height: size }}
+        resizeMode="contain"
+      />
+    );
+  }
+
   const category = playstyleCategory(name);
   const edge = category ? categoryColors[category] : "#888";
-
   return (
     <View
       style={[
-        styles.badge,
+        styles.fallbackBadge,
         {
           width: size,
           height: size * 1.08,
@@ -35,32 +45,24 @@ export function PlaystyleBadge({
         },
       ]}
     >
-      {icon ? (
-        <Image
-          source={icon}
-          style={{ width: size * 0.62, height: size * 0.62 }}
-          resizeMode="contain"
-        />
-      ) : (
-        <Text style={[styles.fallback, { fontSize: size * 0.34 }]}>
-          {name
-            .split(" ")
-            .map((w) => w[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase()}
-        </Text>
-      )}
+      <Text style={[styles.fallbackText, { fontSize: size * 0.34 }]}>
+        {name
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: {
+  fallbackBadge: {
     backgroundColor: "#141920",
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
-  fallback: { color: "#fff", fontWeight: "800" },
+  fallbackText: { color: "#fff", fontWeight: "800" },
 });
