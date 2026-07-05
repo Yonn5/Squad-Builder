@@ -20,6 +20,7 @@ import {
   Loading,
   SectionTitle,
 } from "../../src/components/ui";
+import { COUNTRIES } from "../../src/constants/countries";
 import { POSITIONS, type Position } from "../../src/constants/positions";
 import { supabase } from "../../src/lib/supabase";
 import { STAT_KEYS, STAT_LABELS } from "../../src/logic/overall";
@@ -42,6 +43,7 @@ export default function MyCardScreen() {
   const [saving, setSaving] = useState(false);
   const [username, setUsername] = useState("");
   const [position, setPosition] = useState<Position>("ST");
+  const [nationality, setNationality] = useState("");
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
   const [playstyles, setPlaystyles] = useState<string[]>([]);
   const [record, setRecord] = useState<PlayerRecord | null>(null);
@@ -55,6 +57,7 @@ export default function MyCardScreen() {
     if (profile) {
       setUsername(profile.username);
       setPosition(profile.position);
+      setNationality(profile.nationality ?? "");
       setStats({
         pac: profile.pac,
         sho: profile.sho,
@@ -116,6 +119,7 @@ export default function MyCardScreen() {
       .update({
         username: username.trim(),
         position,
+        nationality,
         ...stats,
         playstyles,
       })
@@ -144,6 +148,7 @@ export default function MyCardScreen() {
             position={position}
             stats={stats}
             playstyles={playstyles}
+            nationality={nationality}
           />
         </View>
 
@@ -170,6 +175,32 @@ export default function MyCardScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <Label>Nationality</Label>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.positions}>
+              {COUNTRIES.map((country) => (
+                <TouchableOpacity
+                  key={country.name}
+                  onPress={() =>
+                    setNationality(nationality === country.name ? "" : country.name)
+                  }
+                  style={[
+                    styles.posChip,
+                    nationality === country.name && styles.posChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.posChipText,
+                      nationality === country.name && styles.posChipTextActive,
+                    ]}
+                  >
+                    {country.flag} {country.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </Card>
 
         <Card style={styles.section}>

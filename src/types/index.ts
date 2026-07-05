@@ -15,6 +15,7 @@ export type Profile = Stats & {
   id: string;
   username: string;
   position: Position;
+  nationality: string;
   playstyles: string[];
   created_at: string;
   updated_at: string;
