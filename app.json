@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Squad Builder",
+    "slug": "squad-builder",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "squadbuilder",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.squadbuilder.app"
+    },
+    "android": {
+      "package": "com.squadbuilder.app",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
