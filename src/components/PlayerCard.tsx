@@ -97,10 +97,15 @@ export function PlayerCard({
         <Text style={[styles.position, { color: tier.text, fontSize: 17 * s }]}>{position}</Text>
       </View>
 
-      {/* playstyle badges, left edge */}
-      <View style={[styles.badges, { left: width * 0.075, top: height * 0.3 }]}>
+      {/* playstyle badges straddling the card's left edge (edge at x=6/280) */}
+      <View
+        style={[
+          styles.badges,
+          { left: width * (6 / 280) - 16 * s, top: height * 0.3 },
+        ]}
+      >
         {playstyles.slice(0, 4).map((p) => (
-          <PlaystyleBadge key={p} name={p} size={30 * s} />
+          <PlaystyleBadge key={p} name={p} size={32 * s} />
         ))}
       </View>
 
