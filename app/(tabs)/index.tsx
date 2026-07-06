@@ -1,7 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,6 +21,7 @@ import {
 } from "../../src/components/ui";
 import { COUNTRIES } from "../../src/constants/countries";
 import { POSITIONS, type Position } from "../../src/constants/positions";
+import { showAlert } from "../../src/lib/alert";
 import { supabase } from "../../src/lib/supabase";
 import { STAT_KEYS, STAT_LABELS } from "../../src/logic/overall";
 import { useUserId } from "../../src/providers/AuthProvider";
@@ -125,8 +125,8 @@ export default function MyCardScreen() {
       })
       .eq("id", userId);
     setSaving(false);
-    if (error) Alert.alert("Save failed", error.message);
-    else Alert.alert("Saved", "Your card has been updated.");
+    if (error) showAlert("Save failed", error.message);
+    else showAlert("Saved", "Your card has been updated.");
   };
 
   const signOut = () => supabase.auth.signOut();

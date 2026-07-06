@@ -1,8 +1,9 @@
 import { Link } from "expo-router";
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Label } from "../../src/components/ui";
+import { showAlert } from "../../src/lib/alert";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
 
@@ -14,20 +15,22 @@ export default function SignUp() {
 
   const signUp = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: { data: { username: username.trim() } },
     });
     setLoading(false);
     if (error) {
-      Alert.alert("Sign up failed", error.message);
-    } else {
-      Alert.alert(
-        "Almost there",
-        "If email confirmation is enabled for your Supabase project, check your inbox before signing in.",
+      showAlert("Sign up failed", error.message);
+    } else if (!data.session) {
+      // Email confirmation is enabled on the Supabase project.
+      showAlert(
+        "Check your inbox",
+        "Confirm your email address, then come back and sign in.",
       );
     }
+    // With a session, the auth redirect takes over automatically.
   };
 
   return (

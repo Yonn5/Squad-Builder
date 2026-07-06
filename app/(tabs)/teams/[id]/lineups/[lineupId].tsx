@@ -1,9 +1,10 @@
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { PitchView } from "../../../../../src/components/PitchView";
 import { Card, Loading, SectionTitle } from "../../../../../src/components/ui";
 import { getFormation } from "../../../../../src/constants/formations";
+import { confirmDialog, showAlert } from "../../../../../src/lib/alert";
 import { supabase } from "../../../../../src/lib/supabase";
 import { calcLineupChemistry } from "../../../../../src/logic/chemistry";
 import { useUserId } from "../../../../../src/providers/AuthProvider";
@@ -98,7 +99,7 @@ export default function LineupScreen() {
       .update({ player_id: userId })
       .eq("id", slot.id)
       .is("player_id", null);
-    if (error) Alert.alert("Could not claim slot", error.message);
+    if (error) showAlert("Could not claim slot", error.message);
     load();
   };
 
@@ -107,28 +108,34 @@ export default function LineupScreen() {
       .from("lineup_slots")
       .update({ player_id: null })
       .eq("id", slot.id);
-    if (error) Alert.alert("Could not update slot", error.message);
+    if (error) showAlert("Could not update slot", error.message);
     load();
   };
 
-  const onSlotPress = (slot: LineupSlot) => {
+  const onSlotPress = async (slot: LineupSlot) => {
     if (slot.player_id === userId) {
-      Alert.alert("Leave position?", `Give up the ${slot.position} slot?`, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Leave", style: "destructive", onPress: () => release(slot) },
-      ]);
+      if (
+        await confirmDialog(
+          "Leave position?",
+          `Give up the ${slot.position} slot?`,
+          "Leave",
+        )
+      ) {
+        release(slot);
+      }
     } else if (slot.player_id === null) {
       claim(slot);
     } else if (isCaptain) {
       const player = profiles[slot.player_id];
-      Alert.alert(
-        "Captain action",
-        `Remove ${player?.username ?? "player"} from ${slot.position}?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Remove", style: "destructive", onPress: () => release(slot) },
-        ],
-      );
+      if (
+        await confirmDialog(
+          "Captain action",
+          `Remove ${player?.username ?? "player"} from ${slot.position}?`,
+          "Remove",
+        )
+      ) {
+        release(slot);
+      }
     }
   };
 

@@ -1,7 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +18,7 @@ import {
   formationsForSize,
   type Formation,
 } from "../../../../src/constants/formations";
+import { showAlert } from "../../../../src/lib/alert";
 import { supabase } from "../../../../src/lib/supabase";
 import { calcOverall, tierFor } from "../../../../src/logic/overall";
 import { useUserId } from "../../../../src/providers/AuthProvider";
@@ -78,7 +78,7 @@ export default function TeamScreen() {
       .single<Lineup>();
     if (error || !lineup) {
       setBusy(false);
-      Alert.alert("Could not create lineup", error?.message ?? "Unknown error");
+      showAlert("Could not create lineup", error?.message ?? "Unknown error");
       return;
     }
     const { error: slotsError } = await supabase.from("lineup_slots").insert(
@@ -90,7 +90,7 @@ export default function TeamScreen() {
     );
     setBusy(false);
     if (slotsError) {
-      Alert.alert("Could not create slots", slotsError.message);
+      showAlert("Could not create slots", slotsError.message);
       return;
     }
     router.push(`/teams/${team.id}/lineups/${lineup.id}`);

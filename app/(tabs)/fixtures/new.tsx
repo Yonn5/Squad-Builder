@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import {
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
+import { showAlert } from "../../../src/lib/alert";
 import { supabase } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
@@ -65,7 +65,7 @@ export default function NewFixtureScreen() {
     if (!homeTeam || !awayTeam) return;
     const kickoff = new Date(`${date.trim()}T${time.trim()}:00`);
     if (isNaN(kickoff.getTime())) {
-      Alert.alert(
+      showAlert(
         "Invalid date",
         "Use YYYY-MM-DD for the date and HH:MM (24h) for the time.",
       );
@@ -85,7 +85,7 @@ export default function NewFixtureScreen() {
       .single();
     setBusy(false);
     if (error || !data) {
-      Alert.alert("Could not schedule", error?.message ?? "Unknown error");
+      showAlert("Could not schedule", error?.message ?? "Unknown error");
       return;
     }
     router.replace(`/fixtures/${data.id}`);

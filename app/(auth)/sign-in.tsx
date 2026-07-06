@@ -1,8 +1,9 @@
 import { Link } from "expo-router";
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Label } from "../../src/components/ui";
+import { showAlert } from "../../src/lib/alert";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
 
@@ -18,7 +19,7 @@ export default function SignIn() {
       password,
     });
     setLoading(false);
-    if (error) Alert.alert("Sign in failed", error.message);
+    if (error) showAlert("Sign in failed", error.message);
   };
 
   return (

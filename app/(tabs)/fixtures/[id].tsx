@@ -1,7 +1,6 @@
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import {
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
+import { showAlert } from "../../../src/lib/alert";
 import { supabase } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
@@ -96,7 +96,7 @@ export default function FixtureScreen() {
       .update({ status })
       .eq("id", match.id);
     setBusy(false);
-    if (error) Alert.alert("Update failed", error.message);
+    if (error) showAlert("Update failed", error.message);
     else load();
   };
 
@@ -136,7 +136,7 @@ export default function FixtureScreen() {
     const home = parseInt(homeScore, 10);
     const away = parseInt(awayScore, 10);
     if (isNaN(home) || isNaN(away) || home < 0 || away < 0) {
-      Alert.alert("Invalid score", "Enter a number for both teams.");
+      showAlert("Invalid score", "Enter a number for both teams.");
       return;
     }
     setBusy(true);
@@ -146,7 +146,7 @@ export default function FixtureScreen() {
       .eq("id", match.id);
     if (matchError) {
       setBusy(false);
-      Alert.alert("Save failed", matchError.message);
+      showAlert("Save failed", matchError.message);
       return;
     }
     // Replace stats wholesale so unchecking "played" removes stale rows.
@@ -169,7 +169,7 @@ export default function FixtureScreen() {
         : { error: null };
     setBusy(false);
     if (statsError) {
-      Alert.alert("Stats save failed", statsError.message);
+      showAlert("Stats save failed", statsError.message);
       return;
     }
     setEditing(false);

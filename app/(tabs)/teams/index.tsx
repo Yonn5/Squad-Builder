@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +15,7 @@ import {
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
+import { showAlert } from "../../../src/lib/alert";
 import { supabase } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
@@ -51,7 +51,7 @@ export default function TeamsScreen() {
       .single<Team>();
     setBusy(false);
     if (error || !data) {
-      Alert.alert("Could not create team", error?.message ?? "Unknown error");
+      showAlert("Could not create team", error?.message ?? "Unknown error");
       return;
     }
     setNewName("");
@@ -67,7 +67,7 @@ export default function TeamsScreen() {
       .maybeSingle<Team>();
     if (!team) {
       setBusy(false);
-      Alert.alert("Not found", "No team with that join code.");
+      showAlert("Not found", "No team with that join code.");
       return;
     }
     const { error } = await supabase
@@ -75,7 +75,7 @@ export default function TeamsScreen() {
       .insert({ team_id: team.id, user_id: userId });
     setBusy(false);
     if (error && !error.message.includes("duplicate")) {
-      Alert.alert("Could not join", error.message);
+      showAlert("Could not join", error.message);
       return;
     }
     setJoinCode("");
