@@ -15,6 +15,17 @@ if (!rawUrl || !rawKey) {
   );
 }
 
+if (rawUrl.includes("YOUR-PROJECT") || rawKey.startsWith("YOUR-")) {
+  // .env was copied from .env.example but never filled in. Left alone this
+  // surfaces much later as an opaque DNS failure ("hostname could not be
+  // found"), so fail loudly and early instead.
+  throw new Error(
+    "Supabase config is still the placeholder from .env.example. Put your " +
+      "real Project URL and anon key in .env (Supabase → Project Settings → " +
+      "API Keys), then restart with: npx expo start --clear",
+  );
+}
+
 if (!rawUrl.startsWith("https://")) {
   // iOS blocks plain http from apps even though Safari allows it, which looks
   // identical to the app being offline.
