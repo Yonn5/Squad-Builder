@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Label } from "../../src/components/ui";
 import { showAlert } from "../../src/lib/alert";
+import { describeAuthError } from "../../src/lib/authErrors";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
 
@@ -19,7 +20,7 @@ export default function SignIn() {
       password,
     });
     setLoading(false);
-    if (error) showAlert("Sign in failed", error.message);
+    if (error) showAlert("Sign in failed", describeAuthError(error.message));
   };
 
   return (

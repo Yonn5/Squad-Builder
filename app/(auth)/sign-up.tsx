@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input, Label } from "../../src/components/ui";
 import { showAlert } from "../../src/lib/alert";
+import { describeAuthError } from "../../src/lib/authErrors";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
 
@@ -22,7 +23,7 @@ export default function SignUp() {
     });
     setLoading(false);
     if (error) {
-      showAlert("Sign up failed", error.message);
+      showAlert("Sign up failed", describeAuthError(error.message));
     } else if (!data.session) {
       // Email confirmation is enabled on the Supabase project.
       showAlert(
