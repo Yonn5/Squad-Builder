@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Card,
   EmptyState,
   Input,
+  KeyboardAwareScroll,
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
@@ -60,32 +60,25 @@ export default function TeamsScreen() {
 
   const joinTeam = async () => {
     setBusy(true);
-    const { data: team } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("join_code", joinCode.trim().toUpperCase())
-      .maybeSingle<Team>();
-    if (!team) {
-      setBusy(false);
-      showAlert("Not found", "No team with that join code.");
-      return;
-    }
-    const { error } = await supabase
-      .from("team_members")
-      .insert({ team_id: team.id, user_id: userId });
+    // join_team verifies the invite code server-side and adds the caller.
+    // Membership can't be inserted directly, so knowing a team id is not
+    // enough to join one.
+    const { data: teamId, error } = await supabase.rpc("join_team", {
+      p_code: joinCode.trim().toUpperCase(),
+    });
     setBusy(false);
-    if (error && !error.message.includes("duplicate")) {
-      showAlert("Could not join", error.message);
+    if (error || !teamId) {
+      showAlert("Could not join", error?.message ?? "No team with that code.");
       return;
     }
     setJoinCode("");
-    router.push(`/teams/${team.id}`);
+    router.push(`/teams/${teamId}`);
   };
 
   if (teams === null) return <Loading />;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScroll contentContainerStyle={styles.content}>
       <SectionTitle>My Teams</SectionTitle>
       {teams.length === 0 ? (
         <EmptyState text="You're not in any team yet. Create one or join with a code from your captain." />
@@ -143,7 +136,7 @@ export default function TeamsScreen() {
           disabled={joinCode.trim().length !== 6}
         />
       </Card>
-    </ScrollView>
+    </KeyboardAwareScroll>
   );
 }
 

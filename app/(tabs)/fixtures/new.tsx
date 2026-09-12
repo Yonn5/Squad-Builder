@@ -1,17 +1,12 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   Button,
   Card,
   EmptyState,
   Input,
+  KeyboardAwareScroll,
   Label,
   Loading,
   SectionTitle,
@@ -25,24 +20,23 @@ import type { Team } from "../../../src/types";
 export default function NewFixtureScreen() {
   const userId = useUserId();
   const [myTeams, setMyTeams] = useState<Team[] | null>(null);
-  const [opponents, setOpponents] = useState<Team[]>([]);
   const [homeTeam, setHomeTeam] = useState<Team | null>(null);
+  const [opponentCode, setOpponentCode] = useState("");
   const [awayTeam, setAwayTeam] = useState<Team | null>(null);
+  const [searching, setSearching] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("19:00");
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [mineRes, allRes] = await Promise.all([
-      supabase.from("teams").select("*").eq("captain_id", userId),
-      supabase.from("teams").select("*").order("name"),
-    ]);
-    const mine = (mineRes.data ?? []) as Team[];
+    const { data } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("captain_id", userId);
+    const mine = (data ?? []) as Team[];
     setMyTeams(mine);
     if (mine.length === 1) setHomeTeam(mine[0]);
-    const myIds = new Set(mine.map((t) => t.id));
-    setOpponents(((allRes.data ?? []) as Team[]).filter((t) => !myIds.has(t.id)));
   }, [userId]);
 
   useFocusEffect(
@@ -60,6 +54,26 @@ export default function NewFixtureScreen() {
       </View>
     );
   }
+
+  const findOpponent = async () => {
+    const code = opponentCode.trim().toUpperCase();
+    setSearching(true);
+    const { data: team } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("join_code", code)
+      .maybeSingle<Team>();
+    setSearching(false);
+    if (!team) {
+      showAlert("No match", `No team found with invite code ${code}.`);
+      return;
+    }
+    if (myTeams.some((t) => t.id === team.id)) {
+      showAlert("That's your team", "Search for the code of the team you want to play against.");
+      return;
+    }
+    setAwayTeam(team);
+  };
 
   const propose = async () => {
     if (!homeTeam || !awayTeam) return;
@@ -91,48 +105,69 @@ export default function NewFixtureScreen() {
     router.replace(`/fixtures/${data.id}`);
   };
 
-  const TeamPicker = ({
-    teams,
-    selected,
-    onSelect,
-  }: {
-    teams: Team[];
-    selected: Team | null;
-    onSelect: (team: Team) => void;
-  }) => (
-    <View style={styles.chips}>
-      {teams.map((team) => (
-        <TouchableOpacity
-          key={team.id}
-          onPress={() => onSelect(team)}
-          style={[styles.chip, selected?.id === team.id && styles.chipActive]}
-        >
-          <Text
-            style={[
-              styles.chipText,
-              selected?.id === team.id && styles.chipTextActive,
-            ]}
-          >
-            {team.name}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScroll contentContainerStyle={styles.content}>
       <Card style={{ gap: 10 }}>
         <SectionTitle>Your team</SectionTitle>
-        <TeamPicker teams={myTeams} selected={homeTeam} onSelect={setHomeTeam} />
+        <View style={styles.chips}>
+          {myTeams.map((team) => (
+            <TouchableOpacity
+              key={team.id}
+              onPress={() => setHomeTeam(team)}
+              style={[styles.chip, homeTeam?.id === team.id && styles.chipActive]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  homeTeam?.id === team.id && styles.chipTextActive,
+                ]}
+              >
+                {team.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </Card>
 
       <Card style={{ gap: 10 }}>
-        <SectionTitle>Opponent</SectionTitle>
-        {opponents.length === 0 ? (
-          <EmptyState text="No other teams exist yet." />
-        ) : (
-          <TeamPicker teams={opponents} selected={awayTeam} onSelect={setAwayTeam} />
+        <SectionTitle>Find opponent</SectionTitle>
+        <Text style={styles.hint}>
+          Ask the other captain for their 6-character invite code — the same
+          one players use to join their squad.
+        </Text>
+        <View style={styles.searchRow}>
+          <Input
+            value={opponentCode}
+            onChangeText={(text) => {
+              setOpponentCode(text);
+              setAwayTeam(null);
+            }}
+            placeholder="e.g. 574365"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={6}
+            style={{ flex: 1 }}
+          />
+          <Button
+            title="Search"
+            onPress={findOpponent}
+            loading={searching}
+            disabled={opponentCode.trim().length !== 6}
+          />
+        </View>
+        {awayTeam && (
+          <View style={styles.found}>
+            <View style={styles.crest}>
+              <Text style={styles.crestText}>
+                {awayTeam.name.slice(0, 2).toUpperCase()}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.foundName}>{awayTeam.name}</Text>
+              <Text style={styles.foundMeta}>Opponent selected</Text>
+            </View>
+            <Text style={styles.tick}>✓</Text>
+          </View>
         )}
       </Card>
 
@@ -159,13 +194,13 @@ export default function NewFixtureScreen() {
       <Text style={styles.hint}>
         The opposing captain will see the proposal and can accept or decline it.
       </Text>
-    </ScrollView>
+    </KeyboardAwareScroll>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  content: { padding: 16, gap: 12 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingVertical: 8,
@@ -178,5 +213,28 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: colors.accent, backgroundColor: "#12291c" },
   chipText: { color: colors.textMuted, fontWeight: "700", fontSize: 13 },
   chipTextActive: { color: colors.accent },
-  hint: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  found: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    backgroundColor: "#12291c",
+    borderRadius: 10,
+    padding: 10,
+  },
+  crest: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  crestText: { color: colors.accent, fontWeight: "800", fontSize: 15 },
+  foundName: { color: colors.text, fontWeight: "700", fontSize: 15 },
+  foundMeta: { color: colors.accent, fontSize: 12, fontWeight: "600" },
+  tick: { color: colors.accent, fontSize: 20, fontWeight: "800" },
+  hint: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
 });

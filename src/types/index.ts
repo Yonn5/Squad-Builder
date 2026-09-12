@@ -11,7 +11,23 @@ export type Stats = {
 
 export type StatKey = keyof Stats;
 
-export type Profile = Stats & {
+/**
+ * Goalkeeper face stats, mirroring how FC-style GK cards are rated:
+ * diving, handling, kicking, reflexes, speed, positioning. Kept in their
+ * own columns so switching position never scrambles the outfield stats.
+ */
+export type GkStats = {
+  gk_div: number;
+  gk_han: number;
+  gk_kic: number;
+  gk_ref: number;
+  gk_spd: number;
+  gk_pos: number;
+};
+
+export type GkStatKey = keyof GkStats;
+
+export type Profile = Stats & GkStats & {
   id: string;
   username: string;
   position: Position;

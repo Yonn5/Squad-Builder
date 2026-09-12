@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Formation } from "../constants/formations";
 import type { LineupChemistry } from "../logic/chemistry";
-import { calcOverall } from "../logic/overall";
+import { overallFor } from "../logic/overall";
 import { colors } from "../theme";
 import type { LineupSlot, Profile } from "../types";
 
@@ -59,7 +59,7 @@ export function PitchView({
                   {player.username}
                 </Text>
                 <Text style={styles.slotOverall}>
-                  {calcOverall(player, player.position)}
+                  {overallFor(player)}
                 </Text>
               </>
             ) : (

@@ -20,7 +20,7 @@ import {
 } from "../../../../src/constants/formations";
 import { showAlert } from "../../../../src/lib/alert";
 import { supabase } from "../../../../src/lib/supabase";
-import { calcOverall, tierFor } from "../../../../src/logic/overall";
+import { overallFor, tierFor } from "../../../../src/logic/overall";
 import { useUserId } from "../../../../src/providers/AuthProvider";
 import { colors, tierColors } from "../../../../src/theme";
 import type { Lineup, Profile, Team } from "../../../../src/types";
@@ -108,7 +108,7 @@ export default function TeamScreen() {
 
       <SectionTitle>Squad ({members.length})</SectionTitle>
       {members.map((member) => {
-        const overall = calcOverall(member, member.position);
+        const overall = overallFor(member);
         const tier = tierColors[tierFor(overall)];
         return (
           <Card key={member.id} style={styles.memberRow}>

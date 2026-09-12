@@ -1,7 +1,6 @@
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +10,7 @@ import {
   Button,
   Card,
   Input,
+  KeyboardAwareScroll,
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
@@ -246,7 +246,7 @@ export default function FixtureScreen() {
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <KeyboardAwareScroll contentContainerStyle={styles.content}>
       <Card style={styles.headerCard}>
         <Text style={styles.vs}>
           {match.home.name}  vs  {match.away.name}
@@ -360,7 +360,7 @@ export default function FixtureScreen() {
           {renderStatsTable(match.away, awayMembers)}
         </>
       )}
-    </ScrollView>
+    </KeyboardAwareScroll>
   );
 }
 

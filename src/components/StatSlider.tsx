@@ -5,16 +5,22 @@ import { colors } from "../theme";
 
 export function StatSlider({
   label,
+  hint,
   value,
   onChange,
 }: {
   label: string;
+  /** Spelled-out stat name, e.g. "Reflexes" for REF. */
+  hint?: string;
   value: number;
   onChange: (value: number) => void;
 }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.labelWrap}>
+        <Text style={styles.label}>{label}</Text>
+        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      </View>
       <Slider
         style={styles.slider}
         minimumValue={1}
@@ -33,12 +39,9 @@ export function StatSlider({
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  label: {
-    color: colors.textMuted,
-    width: 38,
-    fontWeight: "700",
-    fontSize: 13,
-  },
+  labelWrap: { width: 64 },
+  label: { color: colors.textMuted, fontWeight: "700", fontSize: 13 },
+  hint: { color: colors.textMuted, fontSize: 9, opacity: 0.7 },
   slider: { flex: 1, height: 36 },
   value: {
     color: colors.text,

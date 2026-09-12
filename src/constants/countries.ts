@@ -5,6 +5,7 @@ export type Country = {
 
 /** Common nationalities for player cards (extend freely). */
 export const COUNTRIES: Country[] = [
+  { name: "Albania", flag: "🇦🇱" },
   { name: "Argentina", flag: "🇦🇷" },
   { name: "Australia", flag: "🇦🇺" },
   { name: "Austria", flag: "🇦🇹" },

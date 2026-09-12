@@ -1,6 +1,9 @@
 import React from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -85,6 +88,42 @@ export function EmptyState({ text }: { text: string }) {
     <View style={styles.empty}>
       <Text style={{ color: colors.textMuted, textAlign: "center" }}>{text}</Text>
     </View>
+  );
+}
+
+/**
+ * Scrollable page body that lifts out of the way of the on-screen
+ * keyboard. Without this the keyboard simply covers lower fields with no
+ * way to scroll to them.
+ */
+export function KeyboardAwareScroll({
+  children,
+  contentContainerStyle,
+  centered,
+}: {
+  children: React.ReactNode;
+  contentContainerStyle?: ViewStyle;
+  centered?: boolean;
+}) {
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          centered && { flexGrow: 1, justifyContent: "center" },
+          contentContainerStyle,
+          // Room to scroll the last field clear of the keyboard.
+          { paddingBottom: 120 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,8 +1,13 @@
 import { Link } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, Input, Label } from "../../src/components/ui";
+import {
+  Button,
+  Input,
+  KeyboardAwareScroll,
+  Label,
+} from "../../src/components/ui";
 import { showAlert } from "../../src/lib/alert";
 import { describeAuthError } from "../../src/lib/authErrors";
 import { supabase } from "../../src/lib/supabase";
@@ -25,7 +30,7 @@ export default function SignIn() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.form}>
+      <KeyboardAwareScroll centered contentContainerStyle={styles.form}>
         <Text style={styles.title}>Squad Builder</Text>
         <Text style={styles.subtitle}>Build your card. Claim your spot.</Text>
         <Label>Email</Label>
@@ -52,13 +57,13 @@ export default function SignIn() {
         <Link href="/sign-up" style={styles.link}>
           New here? Create an account
         </Link>
-      </View>
+      </KeyboardAwareScroll>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg, justifyContent: "center" },
+  screen: { flex: 1, backgroundColor: colors.bg },
   form: { padding: 24, gap: 12 },
   title: {
     color: colors.text,

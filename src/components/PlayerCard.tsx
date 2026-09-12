@@ -11,9 +11,17 @@ import Svg, {
 } from "react-native-svg";
 import { flagFor } from "../constants/countries";
 import type { Position } from "../constants/positions";
-import { calcOverall, STAT_KEYS, STAT_LABELS, tierFor } from "../logic/overall";
+import {
+  calcGkOverall,
+  calcOverall,
+  GK_STAT_KEYS,
+  GK_STAT_LABELS,
+  STAT_KEYS,
+  STAT_LABELS,
+  tierFor,
+} from "../logic/overall";
 import { tierColors } from "../theme";
-import type { Stats } from "../types";
+import type { GkStats, Stats } from "../types";
 import { PlaystyleBadge } from "./PlaystyleBadge";
 
 // Subtle sunburst rays behind the portrait, clipped to the card shape.
@@ -36,6 +44,7 @@ export function PlayerCard({
   name,
   position,
   stats,
+  gkStats,
   playstyles,
   nationality,
   width = 280,
@@ -43,12 +52,16 @@ export function PlayerCard({
   name: string;
   position: Position;
   stats: Stats;
+  gkStats?: GkStats;
   playstyles: string[];
   nationality?: string;
   width?: number;
 }) {
   const height = width * 1.3;
-  const overall = calcOverall(stats, position);
+  // Goalkeepers are rated on their own six stats, not the outfield ones.
+  const isGk = position === "GK" && !!gkStats;
+  const overall =
+    isGk && gkStats ? calcGkOverall(gkStats) : calcOverall(stats, position);
   const tier = tierColors[tierFor(overall)];
   const s = width / 280; // typography scale
   const flag = flagFor(nationality);
@@ -118,16 +131,27 @@ export function PlayerCard({
 
       {/* stats: one row of six, labels above values */}
       <View style={[styles.statsWrap, { top: height * 0.72, paddingHorizontal: width * 0.115 }]}>
-        {STAT_KEYS.map((key) => (
-          <View key={key} style={styles.stat}>
-            <Text style={[styles.statLabel, { color: tier.text, fontSize: 10.5 * s }]}>
-              {STAT_LABELS[key]}
-            </Text>
-            <Text style={[styles.statValue, { color: tier.text, fontSize: 17 * s }]}>
-              {stats[key]}
-            </Text>
-          </View>
-        ))}
+        {isGk && gkStats
+          ? GK_STAT_KEYS.map((key) => (
+              <View key={key} style={styles.stat}>
+                <Text style={[styles.statLabel, { color: tier.text, fontSize: 10.5 * s }]}>
+                  {GK_STAT_LABELS[key]}
+                </Text>
+                <Text style={[styles.statValue, { color: tier.text, fontSize: 17 * s }]}>
+                  {gkStats[key]}
+                </Text>
+              </View>
+            ))
+          : STAT_KEYS.map((key) => (
+              <View key={key} style={styles.stat}>
+                <Text style={[styles.statLabel, { color: tier.text, fontSize: 10.5 * s }]}>
+                  {STAT_LABELS[key]}
+                </Text>
+                <Text style={[styles.statValue, { color: tier.text, fontSize: 17 * s }]}>
+                  {stats[key]}
+                </Text>
+              </View>
+            ))}
       </View>
 
       {/* nationality */}

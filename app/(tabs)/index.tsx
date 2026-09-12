@@ -1,40 +1,44 @@
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PlayerCard } from "../../src/components/PlayerCard";
 import { PlaystylePicker } from "../../src/components/PlaystylePicker";
+import { PositionPicker } from "../../src/components/PositionPicker";
 import { StatSlider } from "../../src/components/StatSlider";
 import {
   Button,
   Card,
   Input,
+  KeyboardAwareScroll,
   Label,
   Loading,
   SectionTitle,
 } from "../../src/components/ui";
 import { COUNTRIES } from "../../src/constants/countries";
-import { POSITIONS, type Position } from "../../src/constants/positions";
+import type { Position } from "../../src/constants/positions";
 import { showAlert } from "../../src/lib/alert";
 import { supabase } from "../../src/lib/supabase";
-import { STAT_KEYS, STAT_LABELS } from "../../src/logic/overall";
+import {
+  GK_STAT_KEYS,
+  GK_STAT_LABELS,
+  GK_STAT_NAMES,
+  STAT_KEYS,
+  STAT_LABELS,
+} from "../../src/logic/overall";
 import { useUserId } from "../../src/providers/AuthProvider";
 import { colors } from "../../src/theme";
-import type { PlayerRecord, Profile, Stats } from "../../src/types";
+import type { GkStats, PlayerRecord, Profile, Stats } from "../../src/types";
 
-const DEFAULT_STATS: Stats = {
-  pac: 70,
-  sho: 70,
-  pas: 70,
-  dri: 70,
-  def: 70,
-  phy: 70,
+const DEFAULT_STATS: Stats = { pac: 70, sho: 70, pas: 70, dri: 70, def: 70, phy: 70 };
+
+const DEFAULT_GK_STATS: GkStats = {
+  gk_div: 70,
+  gk_han: 70,
+  gk_kic: 70,
+  gk_ref: 70,
+  gk_spd: 70,
+  gk_pos: 70,
 };
 
 export default function MyCardScreen() {
@@ -45,8 +49,11 @@ export default function MyCardScreen() {
   const [position, setPosition] = useState<Position>("ST");
   const [nationality, setNationality] = useState("");
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
+  const [gkStats, setGkStats] = useState<GkStats>(DEFAULT_GK_STATS);
   const [playstyles, setPlaystyles] = useState<string[]>([]);
   const [record, setRecord] = useState<PlayerRecord | null>(null);
+
+  const isGk = position === "GK";
 
   const load = useCallback(async () => {
     const { data: profile } = await supabase
@@ -66,6 +73,14 @@ export default function MyCardScreen() {
         def: profile.def,
         phy: profile.phy,
       });
+      setGkStats({
+        gk_div: profile.gk_div ?? 70,
+        gk_han: profile.gk_han ?? 70,
+        gk_kic: profile.gk_kic ?? 70,
+        gk_ref: profile.gk_ref ?? 70,
+        gk_spd: profile.gk_spd ?? 70,
+        gk_pos: profile.gk_pos ?? 70,
+      });
       setPlaystyles(profile.playstyles);
     }
 
@@ -79,13 +94,7 @@ export default function MyCardScreen() {
       .eq("matches.status", "completed");
     if (rows) {
       const rec: PlayerRecord = {
-        apps: 0,
-        goals: 0,
-        assists: 0,
-        motm: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
+        apps: 0, goals: 0, assists: 0, motm: 0, wins: 0, draws: 0, losses: 0,
       };
       for (const row of rows as any[]) {
         const match = row.matches;
@@ -121,6 +130,7 @@ export default function MyCardScreen() {
         position,
         nationality,
         ...stats,
+        ...gkStats,
         playstyles,
       })
       .eq("id", userId);
@@ -141,12 +151,13 @@ export default function MyCardScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAwareScroll contentContainerStyle={styles.content}>
         <View style={styles.cardWrap}>
           <PlayerCard
             name={username}
             position={position}
             stats={stats}
+            gkStats={gkStats}
             playstyles={playstyles}
             nationality={nationality}
           />
@@ -157,27 +168,10 @@ export default function MyCardScreen() {
           <Label>Name</Label>
           <Input value={username} onChangeText={setUsername} maxLength={24} />
           <Label>Position</Label>
-          <View style={styles.positions}>
-            {POSITIONS.map((pos) => (
-              <TouchableOpacity
-                key={pos}
-                onPress={() => setPosition(pos)}
-                style={[styles.posChip, position === pos && styles.posChipActive]}
-              >
-                <Text
-                  style={[
-                    styles.posChipText,
-                    position === pos && styles.posChipTextActive,
-                  ]}
-                >
-                  {pos}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <PositionPicker value={position} onChange={setPosition} />
           <Label>Nationality</Label>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.positions}>
+            <View style={styles.chipRow}>
               {COUNTRIES.map((country) => (
                 <TouchableOpacity
                   key={country.name}
@@ -204,15 +198,25 @@ export default function MyCardScreen() {
         </Card>
 
         <Card style={styles.section}>
-          <SectionTitle>Stats</SectionTitle>
-          {STAT_KEYS.map((key) => (
-            <StatSlider
-              key={key}
-              label={STAT_LABELS[key]}
-              value={stats[key]}
-              onChange={(value) => setStats((s) => ({ ...s, [key]: value }))}
-            />
-          ))}
+          <SectionTitle>{isGk ? "Goalkeeper Stats" : "Stats"}</SectionTitle>
+          {isGk
+            ? GK_STAT_KEYS.map((key) => (
+                <StatSlider
+                  key={key}
+                  label={GK_STAT_LABELS[key]}
+                  hint={GK_STAT_NAMES[key]}
+                  value={gkStats[key]}
+                  onChange={(value) => setGkStats((g) => ({ ...g, [key]: value }))}
+                />
+              ))
+            : STAT_KEYS.map((key) => (
+                <StatSlider
+                  key={key}
+                  label={STAT_LABELS[key]}
+                  value={stats[key]}
+                  onChange={(value) => setStats((s) => ({ ...s, [key]: value }))}
+                />
+              ))}
         </Card>
 
         <Card style={styles.section}>
@@ -242,7 +246,7 @@ export default function MyCardScreen() {
           disabled={username.trim().length < 2}
         />
         <Button title="Sign Out" onPress={signOut} variant="secondary" />
-      </ScrollView>
+      </KeyboardAwareScroll>
     </SafeAreaView>
   );
 }
@@ -258,10 +262,10 @@ function RecordStat({ label, value }: { label: string; value: number }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 14, paddingBottom: 40 },
+  content: { padding: 16, gap: 14 },
   cardWrap: { alignItems: "center", paddingVertical: 8 },
   section: { gap: 8 },
-  positions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chipRow: { flexDirection: "row", flexWrap: "nowrap", gap: 8 },
   posChip: {
     paddingVertical: 8,
     paddingHorizontal: 12,
