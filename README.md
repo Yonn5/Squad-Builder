@@ -75,3 +75,26 @@ supabase/migrations/    database schema + RLS policies
 - Push notifications (Expo Notifications) for match proposals and slot claims
 - Team crests / avatars via Supabase Storage
 - Nicer date/time picker for scheduling
+
+## Troubleshooting
+
+**Never run `npm audit fix --force` in this project.** Expo pins an exact,
+mutually compatible set of package versions for its SDK. `--force` ignores
+that and "fixes" advisories by changing major versions — it will happily
+downgrade `expo` from 57 to 46 and leave the app unable to start with
+errors like `Cannot find module 'expo/config-plugins'`.
+
+The advisories it reports come from build-time tooling, not from anything
+that ships in the app, so they are not worth breaking the toolchain over.
+
+To recover if it has already run:
+
+```bash
+git checkout -- package.json package-lock.json
+rm -rf node_modules          # Windows: rmdir /s /q node_modules
+npm install
+npx expo start --clear
+```
+
+To upgrade the SDK deliberately, bump `expo` and then align every other
+package with that SDK's bundled versions, rather than letting npm pick.
