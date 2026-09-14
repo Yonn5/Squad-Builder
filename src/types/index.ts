@@ -33,6 +33,8 @@ export type Profile = Stats & GkStats & {
   position: Position;
   nationality: string;
   playstyles: string[];
+  /** Public Storage URL of the card photo, or null if there isn't one. */
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
 };

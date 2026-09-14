@@ -9,6 +9,9 @@ with your friends.
 - **Player cards** — self-assigned PAC/SHO/PAS/DRI/DEF/PHY stats, 12 positions,
   overall auto-calculated with position-weighted averages, and card tiers
   (Bronze < 65, Silver 65–74, Gold 75+) on an original diamond-shield card design.
+- **Card photos** — put a picture from your photo library on your card, with a
+  one-tap background cut-out that leaves just the player. Runs entirely on the
+  device; nothing is sent anywhere but your own Supabase Storage bucket.
 - **PlayStyles+** — 36 styles across 6 categories (Scoring, Passing,
   Ball Control, Defending, Physical, Goalkeeper), max 4 per player, shown as
   custom icon badges on the card.
@@ -26,15 +29,20 @@ with your friends.
 ## Stack
 
 - [Expo](https://expo.dev) (React Native, TypeScript, expo-router)
-- [Supabase](https://supabase.com) (auth, Postgres, realtime)
+- [Supabase](https://supabase.com) (auth, Postgres, realtime, storage)
 
 ## Setup
 
 ### 1. Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Open the SQL editor and run `supabase/migrations/0001_init.sql`
-   (or `supabase db push` with the Supabase CLI).
+2. Open the SQL editor and run every file in `supabase/migrations/` in order,
+   `0001_init.sql` first (or `supabase db push` with the Supabase CLI). They are
+   cumulative — skipping one leaves features broken.
+   `0007_player_photos.sql` also creates the `player-photos` Storage bucket. If
+   your project refuses to create policies on `storage.objects` from the SQL
+   editor, create the four policies by hand under **Storage → Policies** using
+   the same conditions as the file.
 3. For a private friends-only app you may want to disable public signups or
    enable email confirmation under **Authentication → Providers**.
 
@@ -65,15 +73,16 @@ app/                    expo-router screens
 src/
   components/           PlayerCard, PitchView, PlaystylePicker, ...
   constants/            positions, playstyles, formations, icon registry
-  logic/                overall/tier calculation, chemistry
+  logic/                overall/tier calculation, chemistry, photo cut-out
   lib/supabase.ts       Supabase client
+  lib/photo.ts          photo picking + background removal pipeline
 supabase/migrations/    database schema + RLS policies
 ```
 
 ## Roadmap
 
 - Push notifications (Expo Notifications) for match proposals and slot claims
-- Team crests / avatars via Supabase Storage
+- Team crests via Supabase Storage
 - Nicer date/time picker for scheduling
 
 ## Troubleshooting

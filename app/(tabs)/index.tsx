@@ -2,6 +2,7 @@ import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PhotoField, type CardPhoto } from "../../src/components/PhotoField";
 import { PlayerCard } from "../../src/components/PlayerCard";
 import { PlaystyleBadge } from "../../src/components/PlaystyleBadge";
 import { PlaystylePicker } from "../../src/components/PlaystylePicker";
@@ -19,6 +20,10 @@ import {
 import { COUNTRIES, flagFor } from "../../src/constants/countries";
 import { POSITION_NAMES, type Position } from "../../src/constants/positions";
 import { confirmDialog, showAlert } from "../../src/lib/alert";
+import {
+  deletePlayerPhoto,
+  uploadPlayerPhoto,
+} from "../../src/lib/photoStorage";
 import { supabase } from "../../src/lib/supabase";
 import {
   GK_STAT_KEYS,
@@ -39,6 +44,7 @@ type CardDraft = {
   stats: Stats;
   gkStats: GkStats;
   playstyles: string[];
+  photo: CardPhoto | null;
 };
 
 const EMPTY_DRAFT: CardDraft = {
@@ -50,6 +56,7 @@ const EMPTY_DRAFT: CardDraft = {
     gk_div: 70, gk_han: 70, gk_kic: 70, gk_ref: 70, gk_spd: 70, gk_pos: 70,
   },
   playstyles: [],
+  photo: null,
 };
 
 export default function MyCardScreen() {
@@ -88,6 +95,7 @@ export default function MyCardScreen() {
           gk_spd: profile.gk_spd ?? 70, gk_pos: profile.gk_pos ?? 70,
         },
         playstyles: profile.playstyles,
+        photo: profile.photo_url ? { uri: profile.photo_url } : null,
       };
       setDraft(next);
       setSaved(next);
@@ -132,6 +140,20 @@ export default function MyCardScreen() {
 
   const save = async () => {
     setBusy(true);
+
+    // A photo picked in this session still only exists on the device, so it
+    // has to reach Storage before the profile can point at it.
+    let photoUrl = draft.photo?.uri ?? null;
+    if (draft.photo?.data) {
+      try {
+        photoUrl = await uploadPlayerPhoto(userId, draft.photo.data);
+      } catch (error) {
+        setBusy(false);
+        showAlert("Photo upload failed", describeUploadError(error));
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -141,6 +163,7 @@ export default function MyCardScreen() {
         ...draft.stats,
         ...draft.gkStats,
         playstyles: draft.playstyles,
+        photo_url: photoUrl,
       })
       .eq("id", userId);
     setBusy(false);
@@ -148,7 +171,18 @@ export default function MyCardScreen() {
       showAlert("Save failed", error.message);
       return;
     }
-    const trimmed = { ...draft, username: draft.username.trim() };
+
+    const previousUrl = saved.photo?.uri ?? null;
+    if (previousUrl && previousUrl !== photoUrl) {
+      // The card is already saved; a leftover file is not worth a failure.
+      deletePlayerPhoto(previousUrl).catch(() => {});
+    }
+
+    const trimmed: CardDraft = {
+      ...draft,
+      username: draft.username.trim(),
+      photo: photoUrl ? { uri: photoUrl } : null,
+    };
     setDraft(trimmed);
     setSaved(trimmed);
     setEditing(false);
@@ -199,6 +233,7 @@ export default function MyCardScreen() {
             gkStats={draft.gkStats}
             playstyles={draft.playstyles}
             nationality={draft.nationality}
+            photoUri={draft.photo?.uri}
           />
         </View>
 
@@ -211,6 +246,11 @@ export default function MyCardScreen() {
                 value={draft.username}
                 onChangeText={(username) => patch({ username })}
                 maxLength={24}
+              />
+              <Label>Photo</Label>
+              <PhotoField
+                value={draft.photo}
+                onChange={(photo) => patch({ photo })}
               />
               <Label>Position</Label>
               <PositionPicker
@@ -352,6 +392,16 @@ export default function MyCardScreen() {
       </KeyboardAwareScroll>
     </SafeAreaView>
   );
+}
+
+/** Storage errors are opaque; the one worth naming is a missing bucket. */
+function describeUploadError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/bucket not found/i.test(message))
+    return "Photo storage isn't set up on this project yet. Run the latest database migration, then try again.";
+  if (/exceeded the maximum allowed size|payload too large/i.test(message))
+    return "That photo is too large. Try a smaller one.";
+  return message || "The photo could not be uploaded. Try again.";
 }
 
 function RecordStat({ label, value }: { label: string; value: number }) {

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, {
   Circle,
   ClipPath,
@@ -36,9 +36,9 @@ const RAYS = Array.from({ length: 12 }, (_, i) => {
 });
 
 /**
- * FC-style player card: rating + position top-left, portrait silhouette,
- * PlayStyle+ badges down the left edge, centered name, one six-column
- * stat row (labels over values) and nationality at the bottom.
+ * FC-style player card: rating + position top-left, the player's photo (or
+ * a silhouette), PlayStyle+ badges down the left edge, centered name, one
+ * six-column stat row (labels over values) and nationality at the bottom.
  */
 export function PlayerCard({
   name,
@@ -47,6 +47,7 @@ export function PlayerCard({
   gkStats,
   playstyles,
   nationality,
+  photoUri,
   width = 280,
 }: {
   name: string;
@@ -55,6 +56,7 @@ export function PlayerCard({
   gkStats?: GkStats;
   playstyles: string[];
   nationality?: string;
+  photoUri?: string | null;
   width?: number;
 }) {
   const height = width * 1.3;
@@ -91,16 +93,36 @@ export function PlayerCard({
         {RAYS.map((points, i) => (
           <Polygon key={i} points={points} fill="rgba(255,255,255,0.07)" clipPath={`url(#${clipId})`} />
         ))}
-        {/* portrait silhouette */}
-        <Circle cx={162} cy={104} r={40} fill="rgba(60,40,5,0.16)" clipPath={`url(#${clipId})`} />
-        <Path
-          d="M94 208 Q162 148 230 208 L230 210 L94 210 Z"
-          fill="rgba(60,40,5,0.16)"
-          clipPath={`url(#${clipId})`}
-        />
+        {/* portrait silhouette, shown until the player adds a photo */}
+        {!photoUri && (
+          <>
+            <Circle cx={162} cy={104} r={40} fill="rgba(60,40,5,0.16)" clipPath={`url(#${clipId})`} />
+            <Path
+              d="M94 208 Q162 148 230 208 L230 210 L94 210 Z"
+              fill="rgba(60,40,5,0.16)"
+              clipPath={`url(#${clipId})`}
+            />
+          </>
+        )}
         {/* hairline above stats */}
         <Path d="M42 252 H238" stroke={tier.text} strokeWidth={0.8} opacity={0.35} />
       </Svg>
+
+      {/* Player photo. PHOTO_BOX keeps it clear of the badge column on the
+          left and inside the card's outline on every other side. */}
+      {photoUri ? (
+        <Image
+          source={{ uri: photoUri }}
+          resizeMode="contain"
+          style={{
+            position: "absolute",
+            left: PHOTO_BOX.x * s,
+            top: PHOTO_BOX.y * s,
+            width: PHOTO_BOX.width * s,
+            height: PHOTO_BOX.height * s,
+          }}
+        />
+      ) : null}
 
       {/* rating + position, top-left */}
       <View style={[styles.corner, { left: width * 0.1, top: height * 0.055 }]}>
@@ -163,6 +185,13 @@ export function PlayerCard({
     </View>
   );
 }
+
+/**
+ * The photo slot, in viewBox units. Its left edge starts past the PlayStyle+
+ * badges (which end at x=22) and the box stays within the card outline, so a
+ * photo can never spill over the badges or the card's edges.
+ */
+const PHOTO_BOX = { x: 30, y: 24, width: 244, height: 188 };
 
 const styles = StyleSheet.create({
   corner: { position: "absolute", alignItems: "center" },
