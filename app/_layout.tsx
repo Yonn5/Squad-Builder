@@ -5,9 +5,14 @@ import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Loading } from "../src/components/ui";
 import { ICON_IMAGES } from "../src/constants/playstyleIcons";
+import { silenceHandledNetworkLogs } from "../src/lib/quietNetworkLogs";
 import { applyWebViewportFixes } from "../src/lib/webViewport";
 import { AuthProvider, useAuth } from "../src/providers/AuthProvider";
 import { colors } from "../src/theme";
+
+// Installed at module scope: the session check fires before any effect
+// runs, and its failure is what logs first.
+silenceHandledNetworkLogs();
 
 function RootNavigator() {
   const { session, loading } = useAuth();

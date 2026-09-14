@@ -26,7 +26,7 @@ export default function SignIn() {
       password,
     });
     setLoading(false);
-    if (error) setError(describeAuthError(error.message));
+    if (error) setError(describeAuthError(error));
   };
 
   return (

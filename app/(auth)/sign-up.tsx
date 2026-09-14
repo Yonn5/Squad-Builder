@@ -31,7 +31,7 @@ export default function SignUp() {
     });
     setLoading(false);
     if (error) {
-      setError(describeAuthError(error.message));
+      setError(describeAuthError(error));
     } else if (!data.session) {
       // Email confirmation is enabled on the Supabase project.
       setNotice("Check your inbox to confirm your email, then sign in.");
