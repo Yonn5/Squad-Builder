@@ -78,6 +78,8 @@ export type Match = {
   kickoff_at: string;
   location: string | null;
   status: MatchStatus;
+  /** 6 or 10 a side; null for fixtures created before formats existed. */
+  size: 6 | 10 | null;
   home_score: number | null;
   away_score: number | null;
   created_at: string;

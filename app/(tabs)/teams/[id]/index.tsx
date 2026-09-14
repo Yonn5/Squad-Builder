@@ -18,7 +18,7 @@ import {
   formationsForSize,
   type Formation,
 } from "../../../../src/constants/formations";
-import { showAlert } from "../../../../src/lib/alert";
+import { confirmDialog, showAlert } from "../../../../src/lib/alert";
 import { supabase } from "../../../../src/lib/supabase";
 import { overallFor, tierFor } from "../../../../src/logic/overall";
 import { useUserId } from "../../../../src/providers/AuthProvider";
@@ -96,6 +96,62 @@ export default function TeamScreen() {
     router.push(`/teams/${team.id}/lineups/${lineup.id}`);
   };
 
+  const removeMember = async (member: Profile) => {
+    if (
+      !(await confirmDialog(
+        "Remove player",
+        `Remove ${member.username} from ${team.name}? Their card and career stats are not affected.`,
+        "Remove",
+      ))
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("team_members")
+      .delete()
+      .eq("team_id", team.id)
+      .eq("user_id", member.id);
+    setBusy(false);
+    if (error) showAlert("Could not remove player", error.message);
+    else load();
+  };
+
+  const leaveTeam = async () => {
+    if (
+      !(await confirmDialog(
+        "Leave team",
+        `Leave ${team.name}? You will need the invite code to rejoin.`,
+        "Leave",
+      ))
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("team_members")
+      .delete()
+      .eq("team_id", team.id)
+      .eq("user_id", userId);
+    setBusy(false);
+    if (error) showAlert("Could not leave team", error.message);
+    else router.replace("/teams");
+  };
+
+  const deleteTeam = async () => {
+    if (
+      !(await confirmDialog(
+        "Delete team",
+        `Permanently delete ${team.name}? Its lineups and fixtures go with it. This cannot be undone.`,
+        "Delete",
+      ))
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase.from("teams").delete().eq("id", team.id);
+    setBusy(false);
+    if (error) showAlert("Could not delete team", error.message);
+    else router.replace("/teams");
+  };
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.teamName}>{team.name}</Text>
@@ -125,6 +181,15 @@ export default function TeamScreen() {
             <Text style={styles.memberStyles}>
               {member.playstyles.length} PS+
             </Text>
+            {isCaptain && member.id !== team.captain_id && (
+              <TouchableOpacity
+                onPress={() => removeMember(member)}
+                hitSlop={10}
+                style={styles.removeBtn}
+              >
+                <Text style={styles.removeText}>Remove</Text>
+              </TouchableOpacity>
+            )}
           </Card>
         );
       })}
@@ -210,6 +275,22 @@ export default function TeamScreen() {
           />
         </Card>
       )}
+
+      {isCaptain ? (
+        <Button
+          title="Delete Team"
+          onPress={deleteTeam}
+          variant="danger"
+          loading={busy}
+        />
+      ) : (
+        <Button
+          title="Leave Team"
+          onPress={leaveTeam}
+          variant="danger"
+          loading={busy}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -238,6 +319,14 @@ const styles = StyleSheet.create({
   memberName: { color: colors.text, fontWeight: "700", fontSize: 15 },
   memberPos: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
   memberStyles: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  removeBtn: {
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  removeText: { color: colors.danger, fontSize: 12, fontWeight: "700" },
   chev: { color: colors.textMuted, fontSize: 24 },
   sizeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   sizeChip: {

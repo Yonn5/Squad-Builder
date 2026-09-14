@@ -17,7 +17,7 @@ import {
 } from "../../src/components/ui";
 import { COUNTRIES } from "../../src/constants/countries";
 import type { Position } from "../../src/constants/positions";
-import { showAlert } from "../../src/lib/alert";
+import { confirmDialog, showAlert } from "../../src/lib/alert";
 import { supabase } from "../../src/lib/supabase";
 import {
   GK_STAT_KEYS,
@@ -139,6 +139,25 @@ export default function MyCardScreen() {
     else showAlert("Saved", "Your card has been updated.");
   };
 
+  const resetGoalContributions = async () => {
+    if (
+      !(await confirmDialog(
+        "Reset goals & assists",
+        "Set your goals, assists and MOTM awards back to zero across every match? Appearances and your W-D-L record are kept.",
+        "Reset",
+      ))
+    )
+      return;
+    setSaving(true);
+    const { error } = await supabase.rpc("reset_my_goal_contributions");
+    setSaving(false);
+    if (error) showAlert("Could not reset", error.message);
+    else {
+      showAlert("Reset", "Your goals and assists are back to zero.");
+      load();
+    }
+  };
+
   const signOut = () => supabase.auth.signOut();
 
   if (!loaded) {
@@ -236,6 +255,12 @@ export default function MyCardScreen() {
             <Text style={styles.wdl}>
               W {record.wins} · D {record.draws} · L {record.losses}
             </Text>
+            <Button
+              title="Reset Goals & Assists"
+              onPress={resetGoalContributions}
+              variant="secondary"
+              loading={saving}
+            />
           </Card>
         )}
 

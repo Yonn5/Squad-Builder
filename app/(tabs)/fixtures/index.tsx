@@ -28,6 +28,7 @@ const STATUS_COLORS: Record<Match["status"], string> = {
   completed: colors.textMuted,
 };
 
+/** Local-date key, so a fixture lands on the day you actually see. */
 const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -38,6 +39,7 @@ export default function FixturesScreen() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data: memberships } = await supabase
@@ -52,7 +54,9 @@ export default function FixturesScreen() {
     const idList = `(${teamIds.join(",")})`;
     const { data } = await supabase
       .from("matches")
-      .select("*, home:teams!matches_home_team_id_fkey(*), away:teams!matches_away_team_id_fkey(*)")
+      .select(
+        "*, home:teams!matches_home_team_id_fkey(*), away:teams!matches_away_team_id_fkey(*)",
+      )
       .or(`home_team_id.in.${idList},away_team_id.in.${idList}`)
       .order("kickoff_at");
     setMatches((data ?? []) as MatchWithTeams[]);
@@ -78,7 +82,6 @@ export default function FixturesScreen() {
   const changeMonth = (delta: number) =>
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
-  // Build the month grid: leading blanks + days.
   const firstWeekday = (month.getDay() + 6) % 7; // Monday-first
   const daysInMonth = new Date(
     month.getFullYear(),
@@ -94,7 +97,18 @@ export default function FixturesScreen() {
   ];
   const todayKey = dayKey(new Date());
 
-  const upcoming = matches.filter((m) => m.status !== "declined");
+  const visible = matches.filter((m) => m.status !== "declined");
+  const shown = selectedDay
+    ? visible.filter((m) => dayKey(new Date(m.kickoff_at)) === selectedDay)
+    : visible;
+
+  const selectedLabel = selectedDay
+    ? new Date(`${selectedDay}T12:00:00`).toLocaleDateString(undefined, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    : null;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -122,34 +136,68 @@ export default function FixturesScreen() {
         </View>
         <View style={styles.grid}>
           {cells.map((date, i) => {
-            const key = date ? dayKey(date) : "";
-            const hasMatch = date ? matchDays.has(key) : false;
+            if (!date) return <View key={i} style={styles.cell} />;
+            const key = dayKey(date);
+            const hasMatch = matchDays.has(key);
             const isToday = key === todayKey;
+            const isSelected = key === selectedDay;
             return (
-              <View key={i} style={styles.cell}>
-                {date && (
-                  <View style={[styles.day, isToday && styles.today]}>
-                    <Text
-                      style={[styles.dayText, isToday && { color: "#08351d" }]}
-                    >
-                      {date.getDate()}
-                    </Text>
-                    {hasMatch && <View style={styles.dot} />}
-                  </View>
-                )}
-              </View>
+              <TouchableOpacity
+                key={i}
+                style={styles.cell}
+                onPress={() => setSelectedDay(isSelected ? null : key)}
+              >
+                <View
+                  style={[
+                    styles.day,
+                    isToday && styles.today,
+                    isSelected && styles.selected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayText,
+                      isToday && !isSelected && { color: "#08351d" },
+                      isSelected && { color: "#08351d" },
+                    ]}
+                  >
+                    {date.getDate()}
+                  </Text>
+                  {hasMatch && <View style={styles.dot} />}
+                </View>
+              </TouchableOpacity>
             );
           })}
         </View>
+        <Text style={styles.calendarHint}>
+          {selectedDay
+            ? `Showing ${selectedLabel}. Tap the date again to see every fixture.`
+            : "Tap a date to pick a matchday."}
+        </Text>
       </Card>
 
-      <Button title="Schedule a Match" onPress={() => router.push("/fixtures/new")} />
+      <Button
+        title={selectedDay ? `Schedule on ${selectedLabel}` : "Schedule a Match"}
+        onPress={() =>
+          router.push(
+            selectedDay ? `/fixtures/new?date=${selectedDay}` : "/fixtures/new",
+          )
+        }
+      />
 
-      <SectionTitle>All fixtures</SectionTitle>
-      {upcoming.length === 0 ? (
-        <EmptyState text="No fixtures yet. Captains can schedule matches against other teams." />
+      <SectionTitle>
+        {selectedDay ? `Fixtures on ${selectedLabel}` : "All fixtures"}
+      </SectionTitle>
+      {shown.length === 0 ? (
+        <EmptyState
+          text={
+            selectedDay
+              ? "Nothing scheduled on this date yet."
+              : "No fixtures yet. Captains can schedule matches against other teams."
+          }
+        />
       ) : (
-        upcoming.map((match) => {
+        shown.map((match) => {
           const date = new Date(match.kickoff_at);
           return (
             <TouchableOpacity
@@ -170,10 +218,16 @@ export default function FixturesScreen() {
                   <Text style={styles.matchMeta}>
                     {match.status === "completed"
                       ? `FT ${match.home_score}–${match.away_score}`
-                      : date.toLocaleTimeString(undefined, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }) + (match.location ? ` · ${match.location}` : "")}
+                      : [
+                          date.toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }),
+                          match.size ? `${match.size}v${match.size}` : null,
+                          match.location,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                   </Text>
                 </View>
                 <View
@@ -226,16 +280,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  day: { alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 16 },
-  today: { backgroundColor: colors.accent },
+  day: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  today: { backgroundColor: colors.accentDark },
+  selected: { backgroundColor: colors.accent },
   dayText: { color: colors.text, fontSize: 13, fontWeight: "600" },
   dot: {
     position: "absolute",
-    bottom: 2,
+    bottom: 3,
     width: 5,
     height: 5,
     borderRadius: 3,
     backgroundColor: colors.warning,
+  },
+  calendarHint: {
+    color: colors.textMuted,
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 8,
   },
   matchRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   matchDate: { alignItems: "center", width: 40 },

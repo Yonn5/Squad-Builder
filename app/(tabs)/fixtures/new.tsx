@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
@@ -17,15 +17,24 @@ import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
 import type { Team } from "../../../src/types";
 
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 export default function NewFixtureScreen() {
   const userId = useUserId();
+  // The matchday is chosen on the calendar and passed in, so there is no
+  // date field here.
+  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const date = dateParam ?? todayKey();
   const [myTeams, setMyTeams] = useState<Team[] | null>(null);
   const [homeTeam, setHomeTeam] = useState<Team | null>(null);
   const [opponentCode, setOpponentCode] = useState("");
   const [awayTeam, setAwayTeam] = useState<Team | null>(null);
   const [searching, setSearching] = useState(false);
-  const [date, setDate] = useState("");
   const [time, setTime] = useState("19:00");
+  const [size, setSize] = useState<6 | 10>(6);
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -77,12 +86,9 @@ export default function NewFixtureScreen() {
 
   const propose = async () => {
     if (!homeTeam || !awayTeam) return;
-    const kickoff = new Date(`${date.trim()}T${time.trim()}:00`);
+    const kickoff = new Date(`${date}T${time.trim()}:00`);
     if (isNaN(kickoff.getTime())) {
-      showAlert(
-        "Invalid date",
-        "Use YYYY-MM-DD for the date and HH:MM (24h) for the time.",
-      );
+      showAlert("Invalid time", "Enter the kickoff time as HH:MM (24h).");
       return;
     }
     setBusy(true);
@@ -93,6 +99,7 @@ export default function NewFixtureScreen() {
         away_team_id: awayTeam.id,
         created_by: userId,
         kickoff_at: kickoff.toISOString(),
+        size,
         location: location.trim() || null,
       })
       .select()
@@ -173,10 +180,35 @@ export default function NewFixtureScreen() {
 
       <Card style={{ gap: 10 }}>
         <SectionTitle>Kickoff</SectionTitle>
-        <Label>Date (YYYY-MM-DD)</Label>
-        <Input value={date} onChangeText={setDate} placeholder="2026-07-12" />
+        <View style={styles.dateBanner}>
+          <Text style={styles.dateText}>
+            {new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </Text>
+          <Text style={styles.dateHint}>Pick a different date on the calendar</Text>
+        </View>
         <Label>Time (24h)</Label>
         <Input value={time} onChangeText={setTime} placeholder="19:00" />
+        <Label>Format</Label>
+        <View style={styles.chips}>
+          {([6, 10] as const).map((option) => (
+            <TouchableOpacity
+              key={option}
+              onPress={() => setSize(option)}
+              style={[styles.chip, size === option && styles.chipActive]}
+            >
+              <Text
+                style={[styles.chipText, size === option && styles.chipTextActive]}
+              >
+                {option}v{option}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <Label>Location (optional)</Label>
         <Input
           value={location}
@@ -189,7 +221,7 @@ export default function NewFixtureScreen() {
         title="Propose Match"
         onPress={propose}
         loading={busy}
-        disabled={!homeTeam || !awayTeam || !date}
+        disabled={!homeTeam || !awayTeam}
       />
       <Text style={styles.hint}>
         The opposing captain will see the proposal and can accept or decline it.
@@ -214,6 +246,15 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textMuted, fontWeight: "700", fontSize: 13 },
   chipTextActive: { color: colors.accent },
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dateBanner: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 10,
+    padding: 12,
+  },
+  dateText: { color: colors.text, fontWeight: "700", fontSize: 15 },
+  dateHint: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   found: {
     flexDirection: "row",
     alignItems: "center",
