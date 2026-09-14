@@ -116,6 +116,25 @@ export default function TeamScreen() {
     else load();
   };
 
+  const deleteLineup = async (lineup: Lineup) => {
+    if (
+      !(await confirmDialog(
+        "Delete lineup",
+        `Delete "${lineup.name}"? Any positions players have claimed in it are lost.`,
+        "Delete",
+      ))
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("lineups")
+      .delete()
+      .eq("id", lineup.id);
+    setBusy(false);
+    if (error) showAlert("Could not delete lineup", error.message);
+    else load();
+  };
+
   const leaveTeam = async () => {
     if (
       !(await confirmDialog(
@@ -205,11 +224,13 @@ export default function TeamScreen() {
         />
       ) : (
         lineups.map((lineup) => (
-          <TouchableOpacity
-            key={lineup.id}
-            onPress={() => router.push(`/teams/${team.id}/lineups/${lineup.id}`)}
-          >
-            <Card style={styles.memberRow}>
+          <Card key={lineup.id} style={styles.memberRow}>
+            <TouchableOpacity
+              style={styles.lineupMain}
+              onPress={() =>
+                router.push(`/teams/${team.id}/lineups/${lineup.id}`)
+              }
+            >
               <View style={{ flex: 1 }}>
                 <Text style={styles.memberName}>{lineup.name}</Text>
                 <Text style={styles.memberPos}>
@@ -217,8 +238,17 @@ export default function TeamScreen() {
                 </Text>
               </View>
               <Text style={styles.chev}>›</Text>
-            </Card>
-          </TouchableOpacity>
+            </TouchableOpacity>
+            {isCaptain && (
+              <TouchableOpacity
+                onPress={() => deleteLineup(lineup)}
+                hitSlop={10}
+                style={styles.removeBtn}
+              >
+                <Text style={styles.removeText}>Delete</Text>
+              </TouchableOpacity>
+            )}
+          </Card>
         ))
       )}
 
@@ -319,6 +349,7 @@ const styles = StyleSheet.create({
   memberName: { color: colors.text, fontWeight: "700", fontSize: 15 },
   memberPos: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
   memberStyles: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  lineupMain: { flex: 1, flexDirection: "row", alignItems: "center" },
   removeBtn: {
     borderWidth: 1.5,
     borderColor: colors.danger,
