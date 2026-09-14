@@ -20,6 +20,7 @@ import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
 import type {
   Match,
+  MatchAttendance,
   MatchPlayerStats,
   Profile,
   Team,
@@ -36,6 +37,14 @@ type StatEntry = {
 
 const emptyEntry: StatEntry = { played: true, goals: 0, assists: 0, motm: false };
 
+const STATUS_COLORS: Record<Match["status"], string> = {
+  proposed: colors.textMuted,
+  recruiting: colors.warning,
+  accepted: colors.accent,
+  dropped: colors.danger,
+  completed: colors.textMuted,
+};
+
 export default function FixtureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const userId = useUserId();
@@ -43,6 +52,7 @@ export default function FixtureScreen() {
   const [homeMembers, setHomeMembers] = useState<Profile[]>([]);
   const [awayMembers, setAwayMembers] = useState<Profile[]>([]);
   const [savedStats, setSavedStats] = useState<MatchPlayerStats[]>([]);
+  const [attendance, setAttendance] = useState<MatchAttendance[]>([]);
   const [editing, setEditing] = useState(false);
   const [homeScore, setHomeScore] = useState("");
   const [awayScore, setAwayScore] = useState("");
@@ -60,7 +70,7 @@ export default function FixtureScreen() {
     if (!matchData) return;
     setMatch(matchData);
 
-    const [homeRes, awayRes, statsRes] = await Promise.all([
+    const [homeRes, awayRes, statsRes, attendanceRes] = await Promise.all([
       supabase
         .from("team_members")
         .select("profiles(*)")
@@ -70,10 +80,12 @@ export default function FixtureScreen() {
         .select("profiles(*)")
         .eq("team_id", matchData.away_team_id),
       supabase.from("match_player_stats").select("*").eq("match_id", id),
+      supabase.from("match_attendance").select("*").eq("match_id", id),
     ]);
     setHomeMembers(((homeRes.data ?? []) as any[]).map((r) => r.profiles as Profile));
     setAwayMembers(((awayRes.data ?? []) as any[]).map((r) => r.profiles as Profile));
     setSavedStats((statsRes.data ?? []) as MatchPlayerStats[]);
+    setAttendance((attendanceRes.data ?? []) as MatchAttendance[]);
   }, [id]);
 
   useFocusEffect(
@@ -99,6 +111,54 @@ export default function FixtureScreen() {
     if (error) showAlert("Update failed", error.message);
     else load();
   };
+
+  const squad = [...homeMembers, ...awayMembers];
+  const answers = new Map(attendance.map((a) => [a.player_id, a.confirmed]));
+  const isPlaying = squad.some((m) => m.id === userId);
+  const myAnswer = answers.get(userId);
+  const outstanding = squad.filter((m) => answers.get(m.id) !== true).length;
+
+  const respond = async (confirmed: boolean) => {
+    setBusy(true);
+    const { error } = await supabase.from("match_attendance").upsert(
+      {
+        match_id: match.id,
+        player_id: userId,
+        confirmed,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "match_id,player_id" },
+    );
+    setBusy(false);
+    if (error) showAlert("Could not save your answer", error.message);
+    else load();
+  };
+
+  const renderAttendance = (team: Team, members: Profile[]) => (
+    <Card style={{ gap: 8 }}>
+      <SectionTitle>
+        {team.name} ({members.filter((m) => answers.get(m.id) === true).length}/
+        {members.length} in)
+      </SectionTitle>
+      {members.map((member) => {
+        const answer = answers.get(member.id);
+        return (
+          <View key={member.id} style={styles.statLine}>
+            <Text style={styles.statName}>{member.username}</Text>
+            <Text
+              style={[
+                styles.answer,
+                answer === true && { color: colors.accent },
+                answer === false && { color: colors.danger },
+              ]}
+            >
+              {answer === true ? "In" : answer === false ? "Out" : "No reply"}
+            </Text>
+          </View>
+        );
+      })}
+    </Card>
+  );
 
   const startEditing = () => {
     setHomeScore(match.home_score?.toString() ?? "");
@@ -271,7 +331,9 @@ export default function FixtureScreen() {
         {match.location ? (
           <Text style={styles.location}>{match.location}</Text>
         ) : null}
-        <Text style={styles.status}>{match.status.toUpperCase()}</Text>
+        <Text style={[styles.status, { color: STATUS_COLORS[match.status] }]}>
+          {match.status.toUpperCase()}
+        </Text>
       </Card>
 
       {/* Away captain decides on proposals they received */}
@@ -279,13 +341,13 @@ export default function FixtureScreen() {
         <View style={styles.actions}>
           <Button
             title="Accept"
-            onPress={() => setStatus("accepted")}
+            onPress={() => setStatus("recruiting")}
             loading={busy}
             style={{ flex: 1 }}
           />
           <Button
             title="Decline"
-            onPress={() => setStatus("declined")}
+            onPress={() => setStatus("dropped")}
             variant="danger"
             loading={busy}
             style={{ flex: 1 }}
@@ -298,8 +360,48 @@ export default function FixtureScreen() {
         </Text>
       )}
 
+      {(match.status === "recruiting" || match.status === "accepted") && (
+        <>
+          <Card style={{ gap: 8 }}>
+            <SectionTitle>
+              {match.status === "accepted"
+                ? "Everyone is in"
+                : `Confirming attendance — ${outstanding} to go`}
+            </SectionTitle>
+            <Text style={styles.hint}>
+              The fixture is settled once every player on both teams has
+              confirmed. It drops back to recruiting if anyone pulls out or a
+              new player joins either squad.
+            </Text>
+            {isPlaying && (
+              <View style={styles.actions}>
+                <Button
+                  title={myAnswer === true ? "You're in ✓" : "I'm in"}
+                  onPress={() => respond(true)}
+                  loading={busy}
+                  style={{ flex: 1 }}
+                  disabled={myAnswer === true}
+                />
+                <Button
+                  title={myAnswer === false ? "Marked out" : "Can't make it"}
+                  onPress={() => respond(false)}
+                  variant={myAnswer === false ? "secondary" : "danger"}
+                  loading={busy}
+                  style={{ flex: 1 }}
+                  disabled={myAnswer === false}
+                />
+              </View>
+            )}
+          </Card>
+          {renderAttendance(match.home, homeMembers)}
+          {renderAttendance(match.away, awayMembers)}
+        </>
+      )}
+
       {/* Result entry for captains */}
-      {(match.status === "accepted" || match.status === "completed") &&
+      {(match.status === "recruiting" ||
+        match.status === "accepted" ||
+        match.status === "completed") &&
         isCaptain &&
         !editing && (
           <Button
@@ -401,7 +503,6 @@ const styles = StyleSheet.create({
   kickoff: { color: colors.text, fontSize: 15, fontWeight: "600" },
   location: { color: colors.textMuted, fontSize: 13 },
   status: {
-    color: colors.warning,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1,
@@ -451,4 +552,5 @@ const styles = StyleSheet.create({
   statLine: { flexDirection: "row", justifyContent: "space-between" },
   statName: { color: colors.text, fontWeight: "600" },
   statNums: { color: colors.textMuted, fontWeight: "700" },
+  answer: { color: colors.textMuted, fontWeight: "700", fontSize: 13 },
 });

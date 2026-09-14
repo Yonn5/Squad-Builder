@@ -8,7 +8,6 @@ import {
   KeyboardAwareScroll,
   Label,
 } from "../../src/components/ui";
-import { showAlert } from "../../src/lib/alert";
 import { describeAuthError } from "../../src/lib/authErrors";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
@@ -17,15 +16,17 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const signIn = async () => {
+    setError(null);
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
     setLoading(false);
-    if (error) showAlert("Sign in failed", describeAuthError(error.message));
+    if (error) setError(describeAuthError(error.message));
   };
 
   return (
@@ -36,7 +37,10 @@ export default function SignIn() {
         <Label>Email</Label>
         <Input
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setError(null);
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="you@example.com"
@@ -44,10 +48,14 @@ export default function SignIn() {
         <Label>Password</Label>
         <Input
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setError(null);
+          }}
           secureTextEntry
           placeholder="••••••••"
         />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button
           title="Sign In"
           onPress={signIn}
@@ -75,6 +83,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: "center",
     marginBottom: 20,
+  },
+  error: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
   },
   link: {
     color: colors.accent,

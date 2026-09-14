@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
   ScrollView,
   StyleSheet,
   Text,
@@ -92,9 +91,11 @@ export function EmptyState({ text }: { text: string }) {
 }
 
 /**
- * Scrollable page body that lifts out of the way of the on-screen
- * keyboard. Without this the keyboard simply covers lower fields with no
- * way to scroll to them.
+ * Scrollable page body that keeps room for the on-screen keyboard.
+ *
+ * The padding tracks the keyboard's actual height instead of reserving a
+ * fixed block, so a short page doesn't scroll into empty space but any
+ * field can still be scrolled clear of the keyboard.
  */
 export function KeyboardAwareScroll({
   children,
@@ -105,25 +106,33 @@ export function KeyboardAwareScroll({
   contentContainerStyle?: ViewStyle;
   centered?: boolean;
 }) {
+  const [keyboard, setKeyboard] = useState(0);
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) =>
+      setKeyboard(e.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboard(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   return (
-    <KeyboardAvoidingView
+    <ScrollView
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      contentContainerStyle={[
+        centered && { flexGrow: 1, justifyContent: "center" },
+        contentContainerStyle,
+        { paddingBottom: 24 + keyboard },
+      ]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      showsVerticalScrollIndicator={false}
     >
-      <ScrollView
-        contentContainerStyle={[
-          centered && { flexGrow: 1, justifyContent: "center" },
-          contentContainerStyle,
-          // Room to scroll the last field clear of the keyboard.
-          { paddingBottom: 120 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {children}
+    </ScrollView>
   );
 }
 

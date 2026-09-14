@@ -68,7 +68,19 @@ export type LineupSlot = {
   player_id: string | null;
 };
 
-export type MatchStatus = "proposed" | "accepted" | "declined" | "completed";
+export type MatchStatus =
+  | "proposed"
+  | "recruiting"
+  | "accepted"
+  | "dropped"
+  | "completed";
+
+export type MatchAttendance = {
+  match_id: string;
+  player_id: string;
+  confirmed: boolean;
+  updated_at: string;
+};
 
 export type Match = {
   id: string;

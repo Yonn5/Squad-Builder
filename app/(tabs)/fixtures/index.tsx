@@ -22,9 +22,10 @@ import type { Match, Team } from "../../../src/types";
 type MatchWithTeams = Match & { home: Team; away: Team };
 
 const STATUS_COLORS: Record<Match["status"], string> = {
-  proposed: colors.warning,
+  proposed: colors.textMuted,
+  recruiting: colors.warning,
   accepted: colors.accent,
-  declined: colors.danger,
+  dropped: colors.danger,
   completed: colors.textMuted,
 };
 
@@ -97,7 +98,7 @@ export default function FixturesScreen() {
   ];
   const todayKey = dayKey(new Date());
 
-  const visible = matches.filter((m) => m.status !== "declined");
+  const visible = matches.filter((m) => m.status !== "dropped");
   const shown = selectedDay
     ? visible.filter((m) => dayKey(new Date(m.kickoff_at)) === selectedDay)
     : visible;

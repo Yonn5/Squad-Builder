@@ -8,7 +8,6 @@ import {
   KeyboardAwareScroll,
   Label,
 } from "../../src/components/ui";
-import { showAlert } from "../../src/lib/alert";
 import { describeAuthError } from "../../src/lib/authErrors";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/theme";
@@ -18,8 +17,12 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const signUp = async () => {
+    setError(null);
+    setNotice(null);
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -28,13 +31,10 @@ export default function SignUp() {
     });
     setLoading(false);
     if (error) {
-      showAlert("Sign up failed", describeAuthError(error.message));
+      setError(describeAuthError(error.message));
     } else if (!data.session) {
       // Email confirmation is enabled on the Supabase project.
-      showAlert(
-        "Check your inbox",
-        "Confirm your email address, then come back and sign in.",
-      );
+      setNotice("Check your inbox to confirm your email, then sign in.");
     }
     // With a session, the auth redirect takes over automatically.
   };
@@ -46,14 +46,20 @@ export default function SignUp() {
         <Label>Username</Label>
         <Input
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(text) => {
+            setUsername(text);
+            setError(null);
+          }}
           autoCapitalize="none"
           placeholder="your player name"
         />
         <Label>Email</Label>
         <Input
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setError(null);
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="you@example.com"
@@ -61,10 +67,15 @@ export default function SignUp() {
         <Label>Password</Label>
         <Input
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setError(null);
+          }}
           secureTextEntry
           placeholder="min 6 characters"
         />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
         <Button
           title="Sign Up"
           onPress={signUp}
@@ -88,6 +99,18 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
     marginBottom: 12,
+  },
+  error: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  notice: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
   },
   link: {
     color: colors.accent,
