@@ -11,7 +11,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import {
   CARD_SIZE,
@@ -101,6 +101,10 @@ export function PhotoEditor({
   const strokesRef = useRef<Stroke[]>([]);
   const autoAlphaRef = useRef<Uint8Array | null>(null);
   const [canvas, setCanvas] = useState({ width: 0, height: 0 });
+  // Read from the tree outside the modal: a Modal is its own native view
+  // hierarchy with no safe-area provider in it, so a SafeAreaView placed
+  // inside one measures nothing and the header lands under the clock.
+  const insets = useSafeAreaInsets();
 
   modeRef.current = mode;
   brushRef.current = brush;
@@ -356,13 +360,19 @@ export function PhotoEditor({
     : null;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
-      <SafeAreaView style={styles.screen}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={onCancel}
+    >
+      <View style={[styles.screen, { paddingTop: Math.max(insets.top, 10) }]}>
         <View style={styles.header}>
           <TouchableOpacity
             testID="editor-cancel"
             onPress={onCancel}
             disabled={busy === "save"}
+            hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
           >
             <Text style={styles.headerAction}>Cancel</Text>
           </TouchableOpacity>
@@ -371,6 +381,7 @@ export function PhotoEditor({
             testID="editor-done"
             onPress={done}
             disabled={!pixels || busy !== null}
+            hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
           >
             <Text
               style={[
@@ -494,7 +505,12 @@ export function PhotoEditor({
           )}
         </View>
 
-        <View style={styles.controls}>
+        <View
+          style={[
+            styles.controls,
+            { paddingBottom: 16 + insets.bottom },
+          ]}
+        >
           <View style={styles.modes}>
             {(["crop", "erase", "restore"] as Mode[]).map((option) => (
               <TouchableOpacity
@@ -577,7 +593,7 @@ export function PhotoEditor({
             />
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
