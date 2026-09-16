@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, {
   Circle,
@@ -68,6 +68,7 @@ export function PlayerCard({
   const s = width / 280; // typography scale
   const flag = flagFor(nationality);
   const uid = useMemo(() => `pc${cardInstance++}`, []);
+  const photo = fitPhoto(usePhotoRatio(photoUri));
   const gradId = `${uid}-tier`;
   const clipId = `${uid}-card`;
 
@@ -108,18 +109,17 @@ export function PlayerCard({
         <Path d="M42 252 H238" stroke={tier.text} strokeWidth={0.8} opacity={0.35} />
       </Svg>
 
-      {/* Player photo. PHOTO_BOX keeps it clear of the badge column on the
-          left and inside the card's outline on every other side. */}
+      {/* Player photo, centred on the card and standing on the name. */}
       {photoUri ? (
         <Image
           source={{ uri: photoUri }}
           resizeMode="contain"
           style={{
             position: "absolute",
-            left: PHOTO_BOX.x * s,
-            top: PHOTO_BOX.y * s,
-            width: PHOTO_BOX.width * s,
-            height: PHOTO_BOX.height * s,
+            left: (PHOTO_SLOT.centreX - photo.width / 2) * s,
+            top: (PHOTO_SLOT.bottom - photo.height) * s,
+            width: photo.width * s,
+            height: photo.height * s,
           }}
         />
       ) : null}
@@ -187,15 +187,79 @@ export function PlayerCard({
 }
 
 /**
- * The photo slot, in viewBox units.
- *
- * It starts to the right of the rating and position block (which runs to
- * about x=78) rather than at the card's left edge, so a photo that still has
- * its background — a plain rectangle — cannot run under the number. That
- * leaves it well clear of the PlayStyle+ badges too, and the box sits inside
- * the card outline on every other side.
+ * The photo slot, in viewBox units. Centred on the card's own axis, like the
+ * name and the stats row, and standing on top of the name rather than
+ * floating above it: a photo is fitted to the slot and then pushed down to
+ * `bottom`, so the gap under it is the same whatever shape the photo is.
  */
-const PHOTO_BOX = { x: 84, y: 26, width: 188, height: 186 };
+const PHOTO_SLOT = { centreX: 140, bottom: 208, maxWidth: 230, maxHeight: 182 };
+
+/**
+ * The corner the rating and position sit in. A photo that still has its
+ * background is a plain rectangle, and running one under the number reads as
+ * a mistake, so photos are kept out of this corner.
+ */
+const RATING_CORNER = { right: 78, bottom: 90 };
+
+/**
+ * The photo at its own shape, as large as it fits without reaching into the
+ * rating's corner.
+ *
+ * Only a photo both wide enough to reach past the rating and tall enough to
+ * rise beside it actually collides, so it is shrunk by whichever of those
+ * two limits costs less. That leaves a tall photo its full height and a wide
+ * one most of its width; only a square gives up much.
+ */
+function fitPhoto(ratio: number | null) {
+  const { centreX, bottom, maxWidth, maxHeight } = PHOTO_SLOT;
+  if (!ratio) return { width: maxWidth, height: maxHeight };
+
+  let width: number;
+  let height: number;
+  if (ratio > maxWidth / maxHeight) {
+    width = maxWidth;
+    height = maxWidth / ratio;
+  } else {
+    height = maxHeight;
+    width = maxHeight * ratio;
+  }
+
+  const clearWidth = (centreX - RATING_CORNER.right) * 2;
+  const clearHeight = bottom - RATING_CORNER.bottom;
+  if (width > clearWidth && height > clearHeight) {
+    const scale = Math.max(clearWidth / width, clearHeight / height);
+    width *= scale;
+    height *= scale;
+  }
+  return { width, height };
+}
+
+/**
+ * The photo's own width-to-height ratio, so it can be sized to the slot and
+ * then stood on the name. `resizeMode="contain"` alone would centre it in the
+ * slot, leaving a different gap above the name for every photo shape.
+ */
+function usePhotoRatio(uri?: string | null): number | null {
+  const [ratio, setRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    setRatio(null);
+    if (!uri) return;
+    let current = true;
+    Image.getSize(
+      uri,
+      (width, height) => {
+        if (current && height > 0) setRatio(width / height);
+      },
+      () => {},
+    );
+    return () => {
+      current = false;
+    };
+  }, [uri]);
+
+  return ratio;
+}
 
 const styles = StyleSheet.create({
   corner: { position: "absolute", alignItems: "center" },
