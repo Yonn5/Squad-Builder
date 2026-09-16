@@ -187,11 +187,15 @@ export function PlayerCard({
 }
 
 /**
- * The photo slot, in viewBox units. Its left edge starts past the PlayStyle+
- * badges (which end at x=22) and the box stays within the card outline, so a
- * photo can never spill over the badges or the card's edges.
+ * The photo slot, in viewBox units.
+ *
+ * It starts to the right of the rating and position block (which runs to
+ * about x=78) rather than at the card's left edge, so a photo that still has
+ * its background — a plain rectangle — cannot run under the number. That
+ * leaves it well clear of the PlayStyle+ badges too, and the box sits inside
+ * the card outline on every other side.
  */
-const PHOTO_BOX = { x: 30, y: 24, width: 244, height: 188 };
+const PHOTO_BOX = { x: 84, y: 26, width: 188, height: 186 };
 
 const styles = StyleSheet.create({
   corner: { position: "absolute", alignItems: "center" },

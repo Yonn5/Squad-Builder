@@ -84,8 +84,10 @@ export async function pickPhotoFromLibrary(): Promise<PhotoData | null> {
 export type CutoutOutcome = {
   photo: PhotoData;
   /**
-   * False when what survived is too little or too much of the frame to be a
-   * player — usually a backdrop too close in colour to tell apart.
+   * False when the result cannot be a player: too little or too much of the
+   * frame survived, or what survived is scattered scraps rather than one
+   * shape. Both mean the backdrop was too close in colour to tell apart
+   * somewhere the two touch.
    */
   confident: boolean;
 };
@@ -117,6 +119,9 @@ export async function cutOutPhotoBackground(
       base64,
       mime: "image/png",
     },
-    confident: subject.coverage > 0.04 && subject.coverage < 0.95,
+    confident:
+      subject.coverage > 0.04 &&
+      subject.coverage < 0.95 &&
+      subject.dominance > 0.85,
   };
 }

@@ -8,6 +8,12 @@ export type Bitmap = {
 export type Cutout = Bitmap & {
   /** Share of the original frame kept as subject, 0..1. */
   coverage: number;
+  /**
+   * Share of what was kept that belongs to its single largest piece, 0..1.
+   * A player comes out as one shape; a handful of scattered scraps means the
+   * fill could not tell player from backdrop.
+   */
+  dominance: number;
 };
 
 const clamp = (v: number, lo: number, hi: number) =>
@@ -41,7 +47,7 @@ export function cutOutSubject(src: Bitmap): Cutout {
   for (let i = 0; i < n; i++) mask[i] = background[i] ? 0 : 1;
 
   openMask(mask, w, h);
-  dropStrayIslands(mask, w, h);
+  const dominance = dropStrayIslands(mask, w, h);
   const kept = erode(mask, w, h);
   const alpha = featherEdges(kept, w, h);
 
@@ -58,7 +64,7 @@ export function cutOutSubject(src: Bitmap): Cutout {
   deFringe(rgba, alpha, w, h);
 
   const cropped = cropToSubject({ data: rgba, width: w, height: h });
-  return { ...cropped, coverage: covered / n };
+  return { ...cropped, coverage: covered / n, dominance };
 }
 
 /** Coarse colour bucket, 8 levels per channel. */
@@ -296,8 +302,11 @@ function floodBackground(data: Uint8Array, w: number, h: number): Uint8Array {
   return background;
 }
 
-/** Deletes specks of background the fill could not reach. */
-function dropStrayIslands(mask: Uint8Array, w: number, h: number): void {
+/**
+ * Deletes specks the fill could not reach, and reports what share of what
+ * remains is its largest single piece.
+ */
+function dropStrayIslands(mask: Uint8Array, w: number, h: number): number {
   const n = w * h;
   const label = new Int32Array(n).fill(-1);
   const queue = new Int32Array(n);
@@ -333,12 +342,16 @@ function dropStrayIslands(mask: Uint8Array, w: number, h: number): void {
     sizes.push(tail);
   }
 
-  if (sizes.length < 2) return;
+  if (sizes.length === 0) return 0;
   const largest = Math.max(...sizes);
   const floor = Math.max(largest * 0.08, n * 0.0015);
+  let kept = 0;
   for (let i = 0; i < n; i++) {
-    if (mask[i] && sizes[label[i]] < floor) mask[i] = 0;
+    if (!mask[i]) continue;
+    if (sizes[label[i]] < floor) mask[i] = 0;
+    else kept++;
   }
+  return kept > 0 ? largest / kept : 0;
 }
 
 /** Trims one pixel off the subject, where the background colour bleeds in. */

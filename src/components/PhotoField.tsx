@@ -61,13 +61,16 @@ export function PhotoField({
       const source = value?.original ?? value?.data;
       if (!source) return;
       const { photo, confident } = await cutOutPhotoBackground(source);
-      onChange({ uri: photo.uri, data: photo, original: source });
       if (!confident) {
+        // Leaving scraps of a player on the card is worse than leaving the
+        // photo alone, so this one is refused rather than applied.
         showAlert(
-          "Tricky background",
-          "Not much of the photo was left — the backdrop is probably too close in colour to the player. Undo the cut-out, or try a photo taken against a plainer background.",
+          "Background too close in colour",
+          "This one can't be cut out cleanly: somewhere they meet, the background is the same colour as what the player is wearing, so there's no edge to cut along. A photo taken against a plain wall or open sky will work.",
         );
+        return;
       }
+      onChange({ uri: photo.uri, data: photo, original: source });
     });
 
   const undo = () => {
