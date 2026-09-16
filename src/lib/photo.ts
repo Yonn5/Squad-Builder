@@ -4,6 +4,7 @@ import {
 } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { decode as decodeJpeg } from "jpeg-js";
+import { isCutOut } from "../logic/mask";
 import type { Bitmap } from "../logic/segment";
 import { base64ToBytes, bytesToBase64 } from "./binary";
 import { encodePng } from "./png";
@@ -26,6 +27,12 @@ export type PhotoData = {
   /** The same image as base64, for upload. */
   base64: string;
   mime: "image/jpeg" | "image/png";
+  /**
+   * True once the background has been taken out. The card lays a cut-out out
+   * larger, and lets it pass behind the rating, which only reads correctly
+   * when the corners are empty.
+   */
+  cutOut: boolean;
 };
 
 export class PhotoError extends Error {}
@@ -79,7 +86,7 @@ export async function pickPhotoFromLibrary(): Promise<PhotoData | null> {
   if (picked.canceled || !picked.assets?.length) return null;
 
   const { uri, base64 } = await toJpeg(picked.assets[0].uri, CARD_SIZE);
-  return { uri, base64, mime: "image/jpeg" };
+  return { uri, base64, mime: "image/jpeg", cutOut: false };
 }
 
 /** Decodes a photo to raw pixels at no more than `maxSide` on its longest edge. */
@@ -111,5 +118,6 @@ export function encodeBitmap(bitmap: Bitmap, fast = false): PhotoData {
     uri: `data:image/png;base64,${base64}`,
     base64,
     mime: "image/png",
+    cutOut: isCutOut(bitmap),
   };
 }

@@ -23,7 +23,10 @@ export async function uploadPlayerPhoto(
 ): Promise<string> {
   const bytes = base64ToBytes(photo.base64);
   const extension = photo.mime === "image/png" ? "png" : "jpg";
-  const path = `${userId}/${Date.now()}.${extension}`;
+  // The card needs to know whether a photo is a cut-out to lay it out, and
+  // the URL is all it gets back from the database, so it is marked here.
+  const marker = photo.cutOut ? "-cut" : "";
+  const path = `${userId}/${Date.now()}${marker}.${extension}`;
 
   const { error } = await supabase.storage
     .from(PHOTO_BUCKET)
@@ -44,4 +47,9 @@ export async function deletePlayerPhoto(
   const path = pathInBucket(url);
   if (!path) return;
   await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+}
+
+/** Reads back the marker {@link uploadPlayerPhoto} writes into the name. */
+export function isCutOutUrl(url: string | null | undefined): boolean {
+  return !!url && /-cut\.(png|jpg)(\?|$)/.test(url);
 }

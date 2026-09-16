@@ -187,3 +187,20 @@ export function scaleMask(
   }
   return out;
 }
+
+/**
+ * Whether enough of the photo is see-through to call it a cut-out.
+ *
+ * A card lays a cut-out out differently from a photo that still has its
+ * background: only a cut-out can run large and pass behind the rating,
+ * because its corners are empty. The threshold keeps a few stray
+ * anti-aliased pixels along an edge from counting.
+ */
+export function isCutOut(bitmap: Bitmap): boolean {
+  const pixels = bitmap.width * bitmap.height;
+  let clear = 0;
+  for (let i = 0; i < pixels; i++) {
+    if (bitmap.data[i * 4 + 3] < 128) clear++;
+  }
+  return clear > pixels * 0.02;
+}

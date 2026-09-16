@@ -18,6 +18,8 @@ export type CardPhoto = {
   data?: PhotoData;
   /** The pick before any cropping or brushing, so it can be put back. */
   original?: PhotoData;
+  /** Whether the background has been taken out; changes how the card lays it out. */
+  cutOut: boolean;
 };
 
 /**
@@ -43,7 +45,12 @@ export function PhotoField({
       const picked = await pickPhotoFromLibrary();
       if (!picked) return;
       setSession(null);
-      onChange({ uri: picked.uri, data: picked, original: picked });
+      onChange({
+        uri: picked.uri,
+        data: picked,
+        original: picked,
+        cutOut: picked.cutOut,
+      });
     } catch (error) {
       showAlert(
         "Photo problem",
@@ -63,6 +70,7 @@ export function PhotoField({
       uri: value.original.uri,
       data: value.original,
       original: value.original,
+      cutOut: value.original.cutOut,
     });
   };
 
@@ -128,7 +136,12 @@ export function PhotoField({
           onDone={(photo, next) => {
             setEditing(false);
             setSession(next);
-            onChange({ uri: photo.uri, data: photo, original: source });
+            onChange({
+              uri: photo.uri,
+              data: photo,
+              original: source,
+              cutOut: photo.cutOut,
+            });
           }}
         />
       ) : null}

@@ -48,6 +48,7 @@ export function PlayerCard({
   playstyles,
   nationality,
   photoUri,
+  photoCutOut = false,
   width = 280,
 }: {
   name: string;
@@ -57,6 +58,8 @@ export function PlayerCard({
   playstyles: string[];
   nationality?: string;
   photoUri?: string | null;
+  /** A cut-out is laid out large, like an FC card; see {@link CUT_OUT_SLOT}. */
+  photoCutOut?: boolean;
   width?: number;
 }) {
   const height = width * 1.3;
@@ -68,7 +71,7 @@ export function PlayerCard({
   const s = width / 280; // typography scale
   const flag = flagFor(nationality);
   const uid = useMemo(() => `pc${cardInstance++}`, []);
-  const photo = fitPhoto(usePhotoRatio(photoUri));
+  const photo = fitPhoto(usePhotoRatio(photoUri), photoCutOut);
   const gradId = `${uid}-tier`;
   const clipId = `${uid}-card`;
 
@@ -117,7 +120,7 @@ export function PlayerCard({
           style={{
             position: "absolute",
             left: (PHOTO_SLOT.centreX - photo.width / 2) * s,
-            top: (PHOTO_SLOT.bottom - photo.height) * s,
+            top: (photo.bottom - photo.height) * s,
             width: photo.width * s,
             height: photo.height * s,
           }}
@@ -187,10 +190,17 @@ export function PlayerCard({
 }
 
 /**
- * The photo slot, in viewBox units. Centred on the card's own axis, like the
- * name and the stats row, and standing on top of the name rather than
- * floating above it: a photo is fitted to the slot and then pushed down to
- * `bottom`, so the gap under it is the same whatever shape the photo is.
+ * Where a cut-out goes, in viewBox units: from near the top of the card down
+ * onto the name, across almost its full width. This is the FC card layout —
+ * the player stands tall in the card and passes behind the rating, which
+ * only works because the corners of a cut-out are empty.
+ */
+const CUT_OUT_SLOT = { centreX: 140, bottom: 206, maxWidth: 266, maxHeight: 192 };
+
+/**
+ * Where a photo that still has its background goes. A plain rectangle run
+ * under the rating reads as a mistake, so this one is smaller and keeps out
+ * of that corner.
  */
 const PHOTO_SLOT = { centreX: 140, bottom: 208, maxWidth: 230, maxHeight: 182 };
 
@@ -202,17 +212,18 @@ const PHOTO_SLOT = { centreX: 140, bottom: 208, maxWidth: 230, maxHeight: 182 };
 const RATING_CORNER = { right: 78, bottom: 90 };
 
 /**
- * The photo at its own shape, as large as it fits without reaching into the
- * rating's corner.
+ * The photo at its own shape, fitted to its slot and stood on the name.
  *
- * Only a photo both wide enough to reach past the rating and tall enough to
- * rise beside it actually collides, so it is shrunk by whichever of those
- * two limits costs less. That leaves a tall photo its full height and a wide
- * one most of its width; only a square gives up much.
+ * A photo that still has its background is then shrunk if it would reach
+ * into the rating's corner — but only when it is both wide enough to reach
+ * past the rating and tall enough to rise beside it, and then by whichever
+ * of those two limits costs less. That leaves a tall photo its full height
+ * and a wide one most of its width; only a square gives up much.
  */
-function fitPhoto(ratio: number | null) {
-  const { centreX, bottom, maxWidth, maxHeight } = PHOTO_SLOT;
-  if (!ratio) return { width: maxWidth, height: maxHeight };
+function fitPhoto(ratio: number | null, cutOut: boolean) {
+  const slot = cutOut ? CUT_OUT_SLOT : PHOTO_SLOT;
+  const { centreX, bottom, maxWidth, maxHeight } = slot;
+  if (!ratio) return { width: maxWidth, height: maxHeight, bottom };
 
   let width: number;
   let height: number;
@@ -226,12 +237,12 @@ function fitPhoto(ratio: number | null) {
 
   const clearWidth = (centreX - RATING_CORNER.right) * 2;
   const clearHeight = bottom - RATING_CORNER.bottom;
-  if (width > clearWidth && height > clearHeight) {
+  if (!cutOut && width > clearWidth && height > clearHeight) {
     const scale = Math.max(clearWidth / width, clearHeight / height);
     width *= scale;
     height *= scale;
   }
-  return { width, height };
+  return { width, height, bottom };
 }
 
 /**
@@ -263,8 +274,21 @@ function usePhotoRatio(uri?: string | null): number | null {
 
 const styles = StyleSheet.create({
   corner: { position: "absolute", alignItems: "center" },
-  overall: { fontWeight: "800" },
-  position: { fontWeight: "700", letterSpacing: 1, marginTop: -2 },
+  // A cut-out runs behind the rating, so the glyphs carry a faint light halo
+  // to stay legible where a dark photo passes under them. On the card's own
+  // gold it is invisible.
+  overall: {
+    fontWeight: "800",
+    textShadowColor: "rgba(255,255,255,0.5)",
+    textShadowRadius: 6,
+  },
+  position: {
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginTop: -2,
+    textShadowColor: "rgba(255,255,255,0.5)",
+    textShadowRadius: 5,
+  },
   badges: { position: "absolute", gap: 4 },
   nameWrap: { position: "absolute", left: 0, right: 0, alignItems: "center" },
   name: { fontWeight: "800", letterSpacing: 0.8, maxWidth: "72%" },

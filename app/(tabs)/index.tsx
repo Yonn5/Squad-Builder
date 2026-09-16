@@ -22,6 +22,7 @@ import { POSITION_NAMES, type Position } from "../../src/constants/positions";
 import { confirmDialog, showAlert } from "../../src/lib/alert";
 import {
   deletePlayerPhoto,
+  isCutOutUrl,
   uploadPlayerPhoto,
 } from "../../src/lib/photoStorage";
 import { supabase } from "../../src/lib/supabase";
@@ -95,7 +96,9 @@ export default function MyCardScreen() {
           gk_spd: profile.gk_spd ?? 70, gk_pos: profile.gk_pos ?? 70,
         },
         playstyles: profile.playstyles,
-        photo: profile.photo_url ? { uri: profile.photo_url } : null,
+        photo: profile.photo_url
+          ? { uri: profile.photo_url, cutOut: isCutOutUrl(profile.photo_url) }
+          : null,
       };
       setDraft(next);
       setSaved(next);
@@ -181,7 +184,9 @@ export default function MyCardScreen() {
     const trimmed: CardDraft = {
       ...draft,
       username: draft.username.trim(),
-      photo: photoUrl ? { uri: photoUrl } : null,
+      photo: photoUrl
+        ? { uri: photoUrl, cutOut: draft.photo?.cutOut ?? false }
+        : null,
     };
     setDraft(trimmed);
     setSaved(trimmed);
@@ -234,6 +239,7 @@ export default function MyCardScreen() {
             playstyles={draft.playstyles}
             nationality={draft.nationality}
             photoUri={draft.photo?.uri}
+            photoCutOut={draft.photo?.cutOut}
           />
         </View>
 
