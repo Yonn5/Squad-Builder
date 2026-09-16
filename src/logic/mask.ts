@@ -126,28 +126,29 @@ export function cropBitmap(source: Bitmap, rect: Rect): Bitmap {
   return { data: out, width: w, height: h };
 }
 
-/** Nearest-neighbour rescale, used for the editor's quick preview. */
-export function scaleBitmap(source: Bitmap, maxSide: number): Bitmap {
-  const { data, width, height } = source;
-  const longest = Math.max(width, height);
-  if (longest <= maxSide) return source;
-
-  const w = Math.max(1, Math.round((width * maxSide) / longest));
-  const h = Math.max(1, Math.round((height * maxSide) / longest));
-  const out = new Uint8Array(w * h * 4);
-  for (let y = 0; y < h; y++) {
-    const sy = Math.min(height - 1, ((y * height) / h) | 0);
-    for (let x = 0; x < w; x++) {
-      const sx = Math.min(width - 1, ((x * width) / w) | 0);
-      const from = (sy * width + sx) * 4;
-      const to = (y * w + x) * 4;
-      out[to] = data[from];
-      out[to + 1] = data[from + 1];
-      out[to + 2] = data[from + 2];
-      out[to + 3] = data[from + 3];
-    }
+/**
+ * The inverse of a keep-mask as a flat colour: opaque where the photo has
+ * been taken away, clear where it is kept.
+ *
+ * The editor paints this over the photo rather than re-encoding the photo
+ * itself after every stroke. The photo therefore keeps its full resolution
+ * however much is brushed away, and because the result is two colours it
+ * compresses to almost nothing, so a stroke lands immediately.
+ */
+export function removedOverlay(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  colour: [number, number, number],
+): Bitmap {
+  const data = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    data[i * 4] = colour[0];
+    data[i * 4 + 1] = colour[1];
+    data[i * 4 + 2] = colour[2];
+    data[i * 4 + 3] = 255 - mask[i];
   }
-  return { data: out, width: w, height: h };
+  return { data, width, height };
 }
 
 /**

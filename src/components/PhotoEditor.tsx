@@ -27,7 +27,7 @@ import {
   applyMask,
   cropBitmap,
   paintStrokes,
-  scaleBitmap,
+  removedOverlay,
   scaleMask,
   type Point,
   type Rect,
@@ -37,8 +37,13 @@ import { subjectMask, type Bitmap } from "../logic/segment";
 import { colors } from "../theme";
 import { Button } from "./ui";
 
-/** Longest side of the image regenerated after each brush stroke. */
-const PREVIEW_SIZE = 340;
+/**
+ * What shows through where the photo has been brushed away. The canvas is
+ * painted this, and so is the overlay that stands in for transparency, so
+ * the two are indistinguishable.
+ */
+const ERASED = "#4a5160";
+const ERASED_RGB: [number, number, number] = [0x4a, 0x51, 0x60];
 /** How close a finger must land to a corner to grab it, in screen points. */
 const HANDLE_GRAB = 34;
 /** Smallest crop, as a share of the photo's shorter side. */
@@ -81,7 +86,9 @@ export function PhotoEditor({
   onDone: (photo: PhotoData, session: EditSession) => void;
 }) {
   const [pixels, setPixels] = useState<Bitmap | null>(null);
-  const [preview, setPreview] = useState<string>(source.uri);
+  // What has been taken away, painted over the photo. The photo underneath
+  // is never touched, so brushing cannot cost it any quality.
+  const [removed, setRemoved] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("crop");
   const [crop, setCrop] = useState<Rect | null>(null);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -113,13 +120,13 @@ export function PhotoEditor({
   strokesRef.current = strokes;
   autoAlphaRef.current = autoAlpha;
 
-  /** Rebuilds the on-screen image from the auto mask plus every stroke. */
+  /** Repaints what has been taken away, from the auto mask plus the strokes. */
   const refreshPreview = useCallback(
     (nextStrokes: Stroke[], base: Uint8Array | null) => {
       const bitmap = pixelsRef.current;
       if (!bitmap) return;
       if (nextStrokes.length === 0 && !base) {
-        setPreview(source.uri);
+        setRemoved(null);
         return;
       }
       const mask = new Uint8Array(bitmap.width * bitmap.height);
@@ -130,10 +137,15 @@ export function PhotoEditor({
         nextStrokes,
         base ?? undefined,
       );
-      const small = scaleBitmap(applyMask(bitmap, mask), PREVIEW_SIZE);
-      setPreview(encodeBitmap(small, true).uri);
+      const overlay = removedOverlay(
+        mask,
+        bitmap.width,
+        bitmap.height,
+        ERASED_RGB,
+      );
+      setRemoved(encodeBitmap(overlay, true).uri);
     },
-    [source.uri],
+    [],
   );
 
   // Load the photo's pixels once the editor opens.
@@ -141,7 +153,7 @@ export function PhotoEditor({
     if (!visible) return;
     let cancelled = false;
     setBusy("load");
-    setPreview(source.uri);
+    setRemoved(null);
     strokesRef.current = session?.strokes ?? [];
     setStrokes(strokesRef.current);
     autoAlphaRef.current = session?.autoAlpha ?? null;
@@ -292,7 +304,7 @@ export function PhotoEditor({
     setAutoAlpha(null);
     setAutoNote(null);
     if (pixels) setCrop({ x: 0, y: 0, width: pixels.width, height: pixels.height });
-    setPreview(source.uri);
+    setRemoved(null);
   };
 
   const done = async () => {
@@ -402,9 +414,10 @@ export function PhotoEditor({
         >
           {pixels && frame ? (
             <>
-              {/* The preview is swapped for a new one after every stroke, so
-                  it must never be the touch target: the gesture would die
-                  along with the element it started on. */}
+              {/* The photo, at the size it was loaded, with what has been
+                  brushed away painted over it. Neither may be the touch
+                  target: the overlay is replaced after every stroke, and a
+                  gesture dies along with the element it started on. */}
               <View
                 pointerEvents="none"
                 style={{
@@ -416,10 +429,17 @@ export function PhotoEditor({
                 }}
               >
                 <Image
-                  source={{ uri: preview }}
+                  source={{ uri: source.uri }}
                   style={styles.fill}
                   resizeMode="stretch"
                 />
+                {removed ? (
+                  <Image
+                    source={{ uri: removed }}
+                    style={[styles.fill, StyleSheet.absoluteFill]}
+                    resizeMode="stretch"
+                  />
+                ) : null}
               </View>
 
               {/* Everything outside the frame, dimmed. */}
@@ -676,7 +696,7 @@ const styles = StyleSheet.create({
   headerDone: { color: colors.accent },
   headerDisabled: { opacity: 0.4 },
   // Erased areas show this through, so it must not read as part of a photo.
-  canvas: { flex: 1, backgroundColor: "#4a5160", overflow: "hidden" },
+  canvas: { flex: 1, backgroundColor: ERASED, overflow: "hidden" },
   fill: { width: "100%", height: "100%" },
   shade: { position: "absolute", backgroundColor: "rgba(10,12,16,0.62)" },
   frame: {
