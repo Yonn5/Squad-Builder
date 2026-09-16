@@ -112,19 +112,30 @@ export function PlayerCard({
         <Path d="M42 252 H238" stroke={tier.text} strokeWidth={0.8} opacity={0.35} />
       </Svg>
 
-      {/* Player photo, centred on the card and standing on the name. */}
+      {/* Player photo, centred on the card and cropped by the name. */}
       {photoUri ? (
-        <Image
-          source={{ uri: photoUri }}
-          resizeMode="contain"
+        <View
           style={{
             position: "absolute",
-            left: (PHOTO_SLOT.centreX - photo.width / 2) * s,
-            top: (photo.bottom - photo.height) * s,
-            width: photo.width * s,
-            height: photo.height * s,
+            left: photo.slot.left * s,
+            top: photo.slot.top * s,
+            width: photo.slot.width * s,
+            height: photo.slot.height * s,
+            overflow: "hidden",
           }}
-        />
+        >
+          <Image
+            source={{ uri: photoUri }}
+            resizeMode="stretch"
+            style={{
+              position: "absolute",
+              left: photo.image.left * s,
+              top: photo.image.top * s,
+              width: photo.image.width * s,
+              height: photo.image.height * s,
+            }}
+          />
+        </View>
       ) : null}
 
       {/* rating + position, top-left */}
@@ -195,14 +206,26 @@ export function PlayerCard({
  * the player stands tall in the card and passes behind the rating, which
  * only works because the corners of a cut-out are empty.
  */
-const CUT_OUT_SLOT = { centreX: 140, bottom: 206, maxWidth: 266, maxHeight: 192 };
+const CUT_OUT_SLOT = {
+  centreX: 140,
+  top: 18,
+  bottom: 206,
+  width: 266,
+  /**
+   * How far past the slot a cut-out is scaled before the name crops it. At 1
+   * the whole player fits above the name and looks small; FC cards instead
+   * stand the head near the top of the card and let the body run off behind
+   * the name, which is what this buys.
+   */
+  overscale: 1.6,
+};
 
 /**
  * Where a photo that still has its background goes. A plain rectangle run
  * under the rating reads as a mistake, so this one is smaller and keeps out
  * of that corner.
  */
-const PHOTO_SLOT = { centreX: 140, bottom: 208, maxWidth: 230, maxHeight: 182 };
+const PHOTO_SLOT = { centreX: 140, top: 26, bottom: 208, width: 230 };
 
 /**
  * The corner the rating and position sit in. A photo that still has its
@@ -211,38 +234,67 @@ const PHOTO_SLOT = { centreX: 140, bottom: 208, maxWidth: 230, maxHeight: 182 };
  */
 const RATING_CORNER = { right: 78, bottom: 90 };
 
+type Box = { left: number; top: number; width: number; height: number };
+
 /**
- * The photo at its own shape, fitted to its slot and stood on the name.
+ * Where the photo goes, in viewBox units: a window to clip it to, and the
+ * photo's own placement inside that window.
  *
- * A photo that still has its background is then shrunk if it would reach
- * into the rating's corner — but only when it is both wide enough to reach
- * past the rating and tall enough to rise beside it, and then by whichever
- * of those two limits costs less. That leaves a tall photo its full height
- * and a wide one most of its width; only a square gives up much.
+ * A cut-out is scaled past the window and anchored by its head, so the name
+ * crops the body — the FC card look. A photo that still has its background
+ * is fitted whole and stood on the name instead, and shrunk if it would
+ * reach into the rating's corner: only one both wide enough to reach past
+ * the rating and tall enough to rise beside it actually collides, and then
+ * it gives up whichever of the two costs less.
  */
-function fitPhoto(ratio: number | null, cutOut: boolean) {
-  const slot = cutOut ? CUT_OUT_SLOT : PHOTO_SLOT;
-  const { centreX, bottom, maxWidth, maxHeight } = slot;
-  if (!ratio) return { width: maxWidth, height: maxHeight, bottom };
+function fitPhoto(
+  ratio: number | null,
+  cutOut: boolean,
+): { slot: Box; image: Box } {
+  const def = cutOut ? CUT_OUT_SLOT : PHOTO_SLOT;
+  const slot: Box = {
+    left: def.centreX - def.width / 2,
+    top: def.top,
+    width: def.width,
+    height: def.bottom - def.top,
+  };
+  const fill: Box = { left: 0, top: 0, width: slot.width, height: slot.height };
+  if (!ratio) return { slot, image: fill };
 
   let width: number;
   let height: number;
-  if (ratio > maxWidth / maxHeight) {
-    width = maxWidth;
-    height = maxWidth / ratio;
+
+  if (cutOut) {
+    height = Math.min(slot.height * CUT_OUT_SLOT.overscale, slot.width / ratio);
+    width = height * ratio;
   } else {
-    height = maxHeight;
-    width = maxHeight * ratio;
+    if (ratio > slot.width / slot.height) {
+      width = slot.width;
+      height = slot.width / ratio;
+    } else {
+      height = slot.height;
+      width = slot.height * ratio;
+    }
+    const clearWidth = (def.centreX - RATING_CORNER.right) * 2;
+    const clearHeight = def.bottom - RATING_CORNER.bottom;
+    if (width > clearWidth && height > clearHeight) {
+      const scale = Math.max(clearWidth / width, clearHeight / height);
+      width *= scale;
+      height *= scale;
+    }
   }
 
-  const clearWidth = (centreX - RATING_CORNER.right) * 2;
-  const clearHeight = bottom - RATING_CORNER.bottom;
-  if (!cutOut && width > clearWidth && height > clearHeight) {
-    const scale = Math.max(clearWidth / width, clearHeight / height);
-    width *= scale;
-    height *= scale;
-  }
-  return { width, height, bottom };
+  return {
+    slot,
+    image: {
+      left: (slot.width - width) / 2,
+      // Tall enough to be cropped: hang it from the top so the head shows.
+      // Otherwise stand it on the name so the gap underneath never varies.
+      top: height >= slot.height ? 0 : slot.height - height,
+      width,
+      height,
+    },
+  };
 }
 
 /**
