@@ -11,7 +11,10 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import {
   CARD_SIZE,
@@ -101,10 +104,7 @@ export function PhotoEditor({
   const strokesRef = useRef<Stroke[]>([]);
   const autoAlphaRef = useRef<Uint8Array | null>(null);
   const [canvas, setCanvas] = useState({ width: 0, height: 0 });
-  // Read from the tree outside the modal: a Modal is its own native view
-  // hierarchy with no safe-area provider in it, so a SafeAreaView placed
-  // inside one measures nothing and the header lands under the clock.
-  const insets = useSafeAreaInsets();
+  const insets = useModalInsets();
 
   modeRef.current = mode;
   brushRef.current = brush;
@@ -366,7 +366,7 @@ export function PhotoEditor({
       statusBarTranslucent
       onRequestClose={onCancel}
     >
-      <View style={[styles.screen, { paddingTop: Math.max(insets.top, 10) }]}>
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity
             testID="editor-cancel"
@@ -596,6 +596,28 @@ export function PhotoEditor({
       </View>
     </Modal>
   );
+}
+
+/**
+ * Safe-area insets for content inside a full-screen `Modal`.
+ *
+ * A Modal is its own native view hierarchy, so a `SafeAreaView` placed inside
+ * one has no provider to measure against and reports nothing — the header
+ * ends up under the clock. The surrounding tree's context is no better: it
+ * reports whatever is left after the screen above has taken its share, which
+ * is zero at the top. `initialWindowMetrics` sidesteps both: it is a native
+ * constant holding the window's own insets, unaffected by context, by what
+ * any ancestor consumed, or by the modal boundary. The app is portrait-locked
+ * so those never change. The context is still consulted, and the larger of
+ * the two wins, in case a platform reports one and not the other.
+ */
+function useModalInsets(): { top: number; bottom: number } {
+  const context = useSafeAreaInsets();
+  const window = initialWindowMetrics?.insets;
+  return {
+    top: Math.max(window?.top ?? 0, context.top, 12),
+    bottom: Math.max(window?.bottom ?? 0, context.bottom, 0),
+  };
 }
 
 /** Which corner, if any, the finger landed on. */
