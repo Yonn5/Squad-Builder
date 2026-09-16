@@ -20,6 +20,7 @@ export function Button({
   disabled,
   loading,
   style,
+  testID,
 }: {
   title: string;
   onPress: () => void;
@@ -27,6 +28,7 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  testID?: string;
 }) {
   const bg =
     variant === "primary"
@@ -37,6 +39,7 @@ export function Button({
   const fg = variant === "primary" ? "#08351d" : colors.text;
   return (
     <TouchableOpacity
+      testID={testID}
       onPress={onPress}
       disabled={disabled || loading}
       style={[

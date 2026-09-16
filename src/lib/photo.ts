@@ -4,14 +4,15 @@ import {
 } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { decode as decodeJpeg } from "jpeg-js";
-import { cutOutSubject } from "../logic/segment";
+import type { Bitmap } from "../logic/segment";
 import { base64ToBytes, bytesToBase64 } from "./binary";
 import { encodePng } from "./png";
 
 /** Longest side kept for the photo that ends up on the card. */
-const CARD_SIZE = 700;
-/** Longest side the background fill runs at; smaller is faster and smoother. */
-const WORK_SIZE = 512;
+export const CARD_SIZE = 700;
+/** Longest side the photo editor works at. Everything it does is per-pixel
+ *  in JavaScript, so this trades a little sharpness for a responsive brush. */
+export const EDIT_SIZE = 560;
 
 export const PHOTO_BUCKET = "player-photos";
 
@@ -81,47 +82,34 @@ export async function pickPhotoFromLibrary(): Promise<PhotoData | null> {
   return { uri, base64, mime: "image/jpeg" };
 }
 
-export type CutoutOutcome = {
-  photo: PhotoData;
-  /**
-   * False when the result cannot be a player: too little or too much of the
-   * frame survived, or what survived is scattered scraps rather than one
-   * shape. Both mean the backdrop was too close in colour to tell apart
-   * somewhere the two touch.
-   */
-  confident: boolean;
-};
-
-/** Keeps the player and makes everything around them transparent. */
-export async function cutOutPhotoBackground(
-  photo: PhotoData,
-): Promise<CutoutOutcome> {
-  const work = await toJpeg(photo.uri, WORK_SIZE);
+/** Decodes a photo to raw pixels at no more than `maxSide` on its longest edge. */
+export async function loadPixels(
+  uri: string,
+  maxSide: number,
+): Promise<Bitmap> {
+  const work = await toJpeg(uri, maxSide);
   const decoded = decodeJpeg(base64ToBytes(work.base64), {
     useTArray: true,
     formatAsRGBA: true,
   });
-
-  const subject = cutOutSubject({
+  return {
     data: decoded.data,
     width: decoded.width,
     height: decoded.height,
-  });
-  const base64 = bytesToBase64(
-    encodePng(subject.data, subject.width, subject.height),
-  );
+  };
+}
 
+/**
+ * Packs raw pixels back into a PNG, keeping transparency. Pass `fast` for an
+ * image that is only going to be looked at, not saved.
+ */
+export function encodeBitmap(bitmap: Bitmap, fast = false): PhotoData {
+  const base64 = bytesToBase64(
+    encodePng(bitmap.data, bitmap.width, bitmap.height, { fast }),
+  );
   return {
-    // The cut-out only exists as bytes in memory, so it is shown as a data
-    // URI; nothing manipulates it again, the original is kept for that.
-    photo: {
-      uri: `data:image/png;base64,${base64}`,
-      base64,
-      mime: "image/png",
-    },
-    confident:
-      subject.coverage > 0.04 &&
-      subject.coverage < 0.95 &&
-      subject.dominance > 0.85,
+    uri: `data:image/png;base64,${base64}`,
+    base64,
+    mime: "image/png",
   };
 }

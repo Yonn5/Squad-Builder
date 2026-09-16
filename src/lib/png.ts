@@ -54,6 +54,14 @@ export function encodePng(
   rgba: Uint8Array,
   width: number,
   height: number,
+  options: {
+    /**
+     * Skip filter selection and compress lightly. Roughly four times faster
+     * for a file about a third larger — worth it for an image that is only
+     * ever shown on screen, never stored.
+     */
+    fast?: boolean;
+  } = {},
 ): Uint8Array {
   const bpp = 4;
   const stride = width * bpp;
@@ -67,6 +75,15 @@ export function encodePng(
   // 10..12 stay zero: deflate, adaptive filtering, no interlace.
 
   const raw = new Uint8Array((stride + 1) * height);
+
+  if (options.fast) {
+    for (let y = 0; y < height; y++) {
+      // Filter 0 (None): the row is copied through untouched.
+      raw.set(rgba.subarray(y * stride, y * stride + stride), y * (stride + 1) + 1);
+    }
+    return assemble(ihdr, deflate(raw, { level: 1 }));
+  }
+
   const candidates = [0, 1, 2, 3, 4].map(() => new Uint8Array(stride + 1));
   const zeros = new Uint8Array(stride);
 
@@ -99,8 +116,10 @@ export function encodePng(
     raw.set(candidates[best], y * (stride + 1));
   }
 
-  const idat = deflate(raw, { level: 6 });
+  return assemble(ihdr, deflate(raw, { level: 6 }));
+}
 
+function assemble(ihdr: Uint8Array, idat: Uint8Array): Uint8Array {
   const parts = [
     Uint8Array.from(SIGNATURE),
     chunk("IHDR", ihdr),

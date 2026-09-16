@@ -10,8 +10,12 @@ with your friends.
   overall auto-calculated with position-weighted averages, and card tiers
   (Bronze < 65, Silver 65–74, Gold 75+) on an original diamond-shield card design.
 - **Card photos** — put a picture from your photo library on your card, with a
-  one-tap background cut-out that leaves just the player. Runs entirely on the
-  device; nothing is sent anywhere but your own Supabase Storage bucket.
+  photo editor for framing it: drag a crop frame, rub the background away with
+  a finger, and paint back anything taken by mistake. Remove Background has a
+  first go automatically, which works against a plain wall or open sky and
+  says so when a backdrop is too close in colour to the player's clothes to
+  cut along. All of it runs on the device; nothing is sent anywhere but your
+  own Supabase Storage bucket.
 - **PlayStyles+** — 36 styles across 6 categories (Scoring, Passing,
   Ball Control, Defending, Physical, Goalkeeper), max 4 per player, shown as
   custom icon badges on the card.
@@ -75,7 +79,8 @@ src/
   constants/            positions, playstyles, formations, icon registry
   logic/                overall/tier calculation, chemistry, photo cut-out
   lib/supabase.ts       Supabase client
-  lib/photo.ts          photo picking + background removal pipeline
+  lib/photo.ts          photo picking, decoding and encoding
+  lib/png.ts            PNG encoder (the pipeline needs alpha out of raw pixels)
 supabase/migrations/    database schema + RLS policies
 ```
 

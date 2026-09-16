@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { showAlert } from "../lib/alert";
 import {
-  cutOutPhotoBackground,
   pickPhotoFromLibrary,
   PhotoError,
   type PhotoData,
 } from "../lib/photo";
 import { colors } from "../theme";
+import { PhotoEditor, type EditSession } from "./PhotoEditor";
 import { Button } from "./ui";
 
 /** A photo being edited, plus the untouched pick it came from. */
@@ -16,14 +16,13 @@ export type CardPhoto = {
   uri: string;
   /** Set only for a photo chosen in this session, and only then uploadable. */
   data?: PhotoData;
-  /** The pick before the background was taken out, so it can be put back. */
+  /** The pick before any cropping or brushing, so it can be put back. */
   original?: PhotoData;
 };
 
 /**
- * Choosing, cutting out and clearing the card photo. Nothing here touches the
- * database — the screen saves the finished photo along with the rest of the
- * card.
+ * Choosing and editing the card photo. Nothing here touches the database —
+ * the screen saves the finished photo along with the rest of the card.
  */
 export function PhotoField({
   value,
@@ -32,12 +31,19 @@ export function PhotoField({
   value: CardPhoto | null;
   onChange: (photo: CardPhoto | null) => void;
 }) {
-  const [busy, setBusy] = useState<"pick" | "cut" | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  // Held so reopening the editor resumes the crop and brushwork rather than
+  // starting again from the original photo.
+  const [session, setSession] = useState<EditSession | null>(null);
 
-  const run = async (kind: "pick" | "cut", work: () => Promise<void>) => {
-    setBusy(kind);
+  const choose = async () => {
+    setPicking(true);
     try {
-      await work();
+      const picked = await pickPhotoFromLibrary();
+      if (!picked) return;
+      setSession(null);
+      onChange({ uri: picked.uri, data: picked, original: picked });
     } catch (error) {
       showAlert(
         "Photo problem",
@@ -46,35 +52,13 @@ export function PhotoField({
           : "That photo could not be used. Try a different one.",
       );
     } finally {
-      setBusy(null);
+      setPicking(false);
     }
   };
 
-  const choose = () =>
-    run("pick", async () => {
-      const picked = await pickPhotoFromLibrary();
-      if (picked) onChange({ uri: picked.uri, data: picked, original: picked });
-    });
-
-  const cutOut = () =>
-    run("cut", async () => {
-      const source = value?.original ?? value?.data;
-      if (!source) return;
-      const { photo, confident } = await cutOutPhotoBackground(source);
-      if (!confident) {
-        // Leaving scraps of a player on the card is worse than leaving the
-        // photo alone, so this one is refused rather than applied.
-        showAlert(
-          "Background too close in colour",
-          "This one can't be cut out cleanly: somewhere they meet, the background is the same colour as what the player is wearing, so there's no edge to cut along. A photo taken against a plain wall or open sky will work.",
-        );
-        return;
-      }
-      onChange({ uri: photo.uri, data: photo, original: source });
-    });
-
   const undo = () => {
     if (!value?.original) return;
+    setSession(null);
     onChange({
       uri: value.original.uri,
       data: value.original,
@@ -82,8 +66,10 @@ export function PhotoField({
     });
   };
 
-  const canCutOut = !!(value?.original ?? value?.data);
-  const isCutOut = !!value?.original && value.data !== value.original;
+  // Editing needs the photo's pixels, which only exist for a photo picked in
+  // this session; one already saved is just a URL on the card.
+  const source = value?.original;
+  const edited = !!source && value?.data !== source;
 
   return (
     <View style={styles.row}>
@@ -104,39 +90,48 @@ export function PhotoField({
           title={value ? "Change Photo" : "Choose Photo"}
           onPress={choose}
           variant="secondary"
-          loading={busy === "pick"}
-          disabled={busy !== null}
+          loading={picking}
+          disabled={picking}
         />
-        {isCutOut ? (
-          <Button
-            title="Undo Cut-Out"
-            onPress={undo}
-            variant="secondary"
-            disabled={busy !== null}
-          />
-        ) : (
-          <Button
-            title="Remove Background"
-            onPress={cutOut}
-            variant="secondary"
-            loading={busy === "cut"}
-            disabled={busy !== null || !canCutOut}
-          />
-        )}
+        <Button
+          title="Crop & Cut Out"
+          onPress={() => setEditing(true)}
+          variant="secondary"
+          disabled={!source || picking}
+        />
+        {edited ? (
+          <Button title="Undo Edits" onPress={undo} variant="secondary" />
+        ) : null}
         {value ? (
           <Button
             title="Remove Photo"
-            onPress={() => onChange(null)}
+            onPress={() => {
+              setSession(null);
+              onChange(null);
+            }}
             variant="secondary"
-            disabled={busy !== null}
           />
         ) : null}
         <Text style={styles.hint}>
-          {canCutOut
-            ? "Cutting the background out works best on a photo taken against a plain wall or an open sky."
-            : "Pick a photo from your library, then cut the background out so only you show on the card."}
+          {source
+            ? "Crop the photo to frame yourself, then rub the background away with your finger. Remove Background inside the editor has a go at it for you first."
+            : "Pick a photo from your library, then crop it and cut the background out so only you show on the card."}
         </Text>
       </View>
+
+      {source ? (
+        <PhotoEditor
+          visible={editing}
+          source={source}
+          session={session}
+          onCancel={() => setEditing(false)}
+          onDone={(photo, next) => {
+            setEditing(false);
+            setSession(next);
+            onChange({ uri: photo.uri, data: photo, original: source });
+          }}
+        />
+      ) : null}
     </View>
   );
 }

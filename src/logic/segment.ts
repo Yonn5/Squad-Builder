@@ -19,18 +19,29 @@ export type Cutout = Bitmap & {
 const clamp = (v: number, lo: number, hi: number) =>
   v < lo ? lo : v > hi ? hi : v;
 
+export type SubjectMask = {
+  /** Per-pixel opacity of the subject, 0..255, same size as the source. */
+  alpha: Uint8Array;
+  /** Share of the frame kept as subject, 0..1. */
+  coverage: number;
+  /** Share of what was kept that belongs to its largest single piece, 0..1. */
+  dominance: number;
+};
+
 /**
- * Separates the subject from its background and returns it cropped, with
- * everything else transparent.
+ * Works out which pixels belong to the subject rather than the backdrop.
  *
  * The background is found by flood-filling inwards from the frame's edges:
  * a neighbouring pixel joins the background when it is close in colour both
  * to the pixel it spread from (which lets smooth walls and skies through)
  * and to the edge pixel the fill started at (which stops the fill drifting
  * across a gradient and into the player). It is a colour-based segmentation,
- * not a model, so it does well on plain backdrops and less well on busy ones.
+ * not a model: it does well on plain backdrops, and cannot work at all where
+ * the backdrop and the player's clothing meet at the same colour, since then
+ * there is no edge to cut along. `dominance` is how that failure shows up —
+ * a player comes out as one piece, a failure as scattered scraps.
  */
-export function cutOutSubject(src: Bitmap): Cutout {
+export function subjectMask(src: Bitmap): SubjectMask {
   const { width: w, height: h, data } = src;
   const n = w * h;
 
@@ -48,23 +59,30 @@ export function cutOutSubject(src: Bitmap): Cutout {
 
   openMask(mask, w, h);
   const dominance = dropStrayIslands(mask, w, h);
-  const kept = erode(mask, w, h);
-  const alpha = featherEdges(kept, w, h);
+  const alpha = featherEdges(erode(mask, w, h), w, h);
 
   let covered = 0;
   for (let i = 0; i < n; i++) if (alpha[i] > 8) covered++;
 
+  return { alpha, coverage: covered / n, dominance };
+}
+
+/**
+ * {@link subjectMask} applied to the photo and trimmed to what survived, so
+ * the subject fills the card slot.
+ */
+export function cutOutSubject(src: Bitmap): Cutout {
+  const { width: w, height: h, data } = src;
+  const n = w * h;
+  const { alpha, coverage, dominance } = subjectMask(src);
+
   const rgba = new Uint8Array(n * 4);
-  for (let i = 0; i < n; i++) {
-    rgba[i * 4] = data[i * 4];
-    rgba[i * 4 + 1] = data[i * 4 + 1];
-    rgba[i * 4 + 2] = data[i * 4 + 2];
-    rgba[i * 4 + 3] = alpha[i];
-  }
+  rgba.set(data);
+  for (let i = 0; i < n; i++) rgba[i * 4 + 3] = alpha[i];
   deFringe(rgba, alpha, w, h);
 
   const cropped = cropToSubject({ data: rgba, width: w, height: h });
-  return { ...cropped, coverage: covered / n, dominance };
+  return { ...cropped, coverage, dominance };
 }
 
 /** Coarse colour bucket, 8 levels per channel. */
