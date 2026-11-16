@@ -9,9 +9,13 @@
 --   accepted   – every player on both teams has confirmed
 --   completed  – played, with a result recorded
 -- ============================================================
+-- The old constraint has to go before the rename, not after: it does not
+-- know the word 'dropped', so renaming first fails on any database that
+-- holds a declined fixture and takes the rest of this script down with it.
+alter table public.matches drop constraint if exists matches_status_check;
+
 update public.matches set status = 'dropped' where status = 'declined';
 
-alter table public.matches drop constraint if exists matches_status_check;
 alter table public.matches add constraint matches_status_check
   check (status in ('proposed', 'recruiting', 'accepted', 'dropped', 'completed'));
 
