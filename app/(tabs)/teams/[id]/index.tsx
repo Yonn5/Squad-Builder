@@ -122,9 +122,9 @@ export default function TeamScreen() {
   const removeMember = async (member: Profile) => {
     if (
       !(await confirmDialog(
-        "Remove player",
-        `Remove ${member.username} from ${team.name}? Their card and career stats are not affected.`,
-        "Remove",
+        "Kick player",
+        `Kick ${member.username} out of ${team.name}? Their card and career stats are not affected.`,
+        "Kick",
       ))
     )
       return;
@@ -135,7 +135,7 @@ export default function TeamScreen() {
       .eq("team_id", team.id)
       .eq("user_id", member.id);
     setBusy(false);
-    if (error) showAlert("Could not remove player", error.message);
+    if (error) showAlert("Could not kick player", error.message);
     else load();
   };
 
@@ -159,20 +159,17 @@ export default function TeamScreen() {
   };
 
   const leaveTeam = async () => {
-    if (
-      !(await confirmDialog(
-        "Leave team",
-        `Leave ${team.name}? You will need the invite code to rejoin.`,
-        "Leave",
-      ))
-    )
-      return;
+    const alone = members.length <= 1;
+    const message = !isCaptain
+      ? `Leave ${team.name}? You will need the invite code to rejoin.`
+      : alone
+        ? `You're the only player in ${team.name}, so leaving deletes the team, its lineups and its fixtures. This cannot be undone.`
+        : `Leave ${team.name}? A team-mate picked at random becomes captain. You will need the invite code to rejoin.`;
+    if (!(await confirmDialog("Leave team", message, "Leave"))) return;
     setBusy(true);
-    const { error } = await supabase
-      .from("team_members")
-      .delete()
-      .eq("team_id", team.id)
-      .eq("user_id", userId);
+    // Done server-side so handing over the captaincy, or deleting an empty
+    // team, happens in one step.
+    const { error } = await supabase.rpc("leave_team", { p_team_id: team.id });
     setBusy(false);
     if (error) showAlert("Could not leave team", error.message);
     else router.replace("/teams");
@@ -229,7 +226,7 @@ export default function TeamScreen() {
                 hitSlop={10}
                 style={styles.removeBtn}
               >
-                <Text style={styles.removeText}>Remove</Text>
+                <Text style={styles.removeText}>Kick</Text>
               </TouchableOpacity>
             )}
           </Card>
@@ -329,14 +326,15 @@ export default function TeamScreen() {
         </Card>
       )}
 
-      {isCaptain ? (
+      {isCaptain && (
         <Button
           title="Delete Team"
           onPress={deleteTeam}
           variant="danger"
           loading={busy}
         />
-      ) : isMember ? (
+      )}
+      {isMember ? (
         <Button
           title="Leave Team"
           onPress={leaveTeam}
