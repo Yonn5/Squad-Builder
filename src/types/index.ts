@@ -43,7 +43,8 @@ export type Team = {
   id: string;
   name: string;
   captain_id: string;
-  join_code: string;
+  /** Only ever loaded for the captain, via the team_invite_code function. */
+  join_code?: string;
   created_at: string;
 };
 

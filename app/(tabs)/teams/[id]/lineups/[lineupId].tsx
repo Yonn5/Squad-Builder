@@ -2,10 +2,10 @@ import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { PitchView } from "../../../../../src/components/PitchView";
-import { Card, Loading, SectionTitle } from "../../../../../src/components/ui";
+import { Card, EmptyState, Loading, SectionTitle } from "../../../../../src/components/ui";
 import { getFormation } from "../../../../../src/constants/formations";
 import { confirmDialog, showAlert } from "../../../../../src/lib/alert";
-import { supabase } from "../../../../../src/lib/supabase";
+import { supabase, TEAM_COLUMNS } from "../../../../../src/lib/supabase";
 import { calcLineupChemistry } from "../../../../../src/logic/chemistry";
 import { useUserId } from "../../../../../src/providers/AuthProvider";
 import { colors } from "../../../../../src/theme";
@@ -21,11 +21,12 @@ export default function LineupScreen() {
   const [team, setTeam] = useState<Team | null>(null);
   const [slots, setSlots] = useState<LineupSlot[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [problem, setProblem] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [lineupRes, teamRes, slotsRes, membersRes] = await Promise.all([
-      supabase.from("lineups").select("*").eq("id", lineupId).single<Lineup>(),
-      supabase.from("teams").select("*").eq("id", teamId).single<Team>(),
+      supabase.from("lineups").select("*").eq("id", lineupId).maybeSingle<Lineup>(),
+      supabase.from("teams").select(TEAM_COLUMNS).eq("id", teamId).maybeSingle<Team>(),
       supabase
         .from("lineup_slots")
         .select("*")
@@ -33,6 +34,13 @@ export default function LineupScreen() {
         .order("slot_index"),
       supabase.from("team_members").select("profiles(*)").eq("team_id", teamId),
     ]);
+    setProblem(
+      lineupRes.error || teamRes.error
+        ? "Couldn't load this lineup. Check your connection and try again."
+        : !lineupRes.data || !teamRes.data
+          ? "This lineup no longer exists. The captain may have deleted it."
+          : null,
+    );
     setLineup(lineupRes.data);
     setTeam(teamRes.data);
     setSlots((slotsRes.data ?? []) as LineupSlot[]);
@@ -70,6 +78,13 @@ export default function LineupScreen() {
     [slots, profiles],
   );
 
+  if (problem) {
+    return (
+      <View style={styles.screen}>
+        <EmptyState text={problem} />
+      </View>
+    );
+  }
   if (!lineup || !team) return <Loading />;
 
   const formation = getFormation(lineup.formation);

@@ -76,6 +76,7 @@ export default function MyCardScreen() {
     setDraft((d) => ({ ...d, ...changes }));
 
   const load = useCallback(async () => {
+    if (!userId) return;
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
@@ -171,7 +172,12 @@ export default function MyCardScreen() {
       .eq("id", userId);
     setBusy(false);
     if (error) {
-      showAlert("Save failed", error.message);
+      showAlert(
+        "Save failed",
+        error.code === "23505"
+          ? `"${draft.username.trim()}" is already taken. Pick another player name.`
+          : error.message,
+      );
       return;
     }
 

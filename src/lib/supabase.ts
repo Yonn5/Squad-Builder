@@ -45,3 +45,10 @@ export const supabase = createClient(rawUrl, rawKey, {
     detectSessionInUrl: false,
   },
 });
+
+/**
+ * Teams are read column by column: the invite code is private to the captain
+ * (see migration 0008), so `select *` on teams is refused. The captain gets
+ * the code from the `team_invite_code` function instead.
+ */
+export const TEAM_COLUMNS = "id, name, captain_id, created_at";

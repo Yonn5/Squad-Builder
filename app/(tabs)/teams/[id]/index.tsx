@@ -19,7 +19,7 @@ import {
   type Formation,
 } from "../../../../src/constants/formations";
 import { confirmDialog, showAlert } from "../../../../src/lib/alert";
-import { supabase } from "../../../../src/lib/supabase";
+import { supabase, TEAM_COLUMNS } from "../../../../src/lib/supabase";
 import { overallFor, tierFor } from "../../../../src/logic/overall";
 import { useUserId } from "../../../../src/providers/AuthProvider";
 import { colors, tierColors } from "../../../../src/theme";
@@ -34,18 +34,26 @@ export default function TeamScreen() {
   const [size, setSize] = useState<6 | 10>(6);
   const [formation, setFormation] = useState<Formation | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  // "missing": the team was deleted (or never existed); "failed": the load
+  // itself failed. Either way there is nothing to wait for.
+  const [problem, setProblem] = useState<"missing" | "failed" | null>(null);
 
   const load = useCallback(async () => {
-    const [teamRes, membersRes, lineupsRes] = await Promise.all([
-      supabase.from("teams").select("*").eq("id", id).single<Team>(),
+    const [teamRes, membersRes, lineupsRes, codeRes] = await Promise.all([
+      supabase.from("teams").select(TEAM_COLUMNS).eq("id", id).maybeSingle<Team>(),
       supabase.from("team_members").select("profiles(*)").eq("team_id", id),
       supabase
         .from("lineups")
         .select("*")
         .eq("team_id", id)
         .order("created_at", { ascending: false }),
+      // Only the captain gets a code back; for anyone else this is null.
+      supabase.rpc("team_invite_code", { p_team_id: id }),
     ]);
+    setProblem(teamRes.error ? "failed" : teamRes.data ? null : "missing");
     setTeam(teamRes.data);
+    setInviteCode((codeRes.data as string | null) ?? null);
     setMembers(
       ((membersRes.data ?? []) as any[]).map((row) => row.profiles as Profile),
     );
@@ -58,9 +66,24 @@ export default function TeamScreen() {
     }, [load]),
   );
 
+  if (problem) {
+    return (
+      <View style={styles.problem}>
+        <EmptyState
+          text={
+            problem === "missing"
+              ? "This team no longer exists. Its captain may have deleted it."
+              : "Couldn't load this team. Check your connection and try again."
+          }
+        />
+        <Button title="Back to Teams" onPress={() => router.replace("/teams")} />
+      </View>
+    );
+  }
   if (!team) return <Loading />;
 
   const isCaptain = team.captain_id === userId;
+  const isMember = members.some((member) => member.id === userId);
   const formations = formationsForSize(size);
 
   const createLineup = async () => {
@@ -174,10 +197,10 @@ export default function TeamScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.teamName}>{team.name}</Text>
-      {isCaptain && (
+      {isCaptain && inviteCode && (
         <Card style={styles.joinCard}>
           <Text style={styles.joinLabel}>Invite code — share with friends</Text>
-          <Text style={styles.joinCode}>{team.join_code}</Text>
+          <Text style={styles.joinCode}>{inviteCode}</Text>
         </Card>
       )}
 
@@ -313,20 +336,21 @@ export default function TeamScreen() {
           variant="danger"
           loading={busy}
         />
-      ) : (
+      ) : isMember ? (
         <Button
           title="Leave Team"
           onPress={leaveTeam}
           variant="danger"
           loading={busy}
         />
-      )}
+      ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  problem: { flex: 1, backgroundColor: colors.bg, padding: 16 },
   content: { padding: 16, gap: 12, paddingBottom: 40 },
   teamName: { color: colors.text, fontSize: 26, fontWeight: "800" },
   joinCard: { alignItems: "center", gap: 4 },

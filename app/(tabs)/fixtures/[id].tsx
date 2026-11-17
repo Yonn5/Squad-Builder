@@ -9,13 +9,14 @@ import {
 import {
   Button,
   Card,
+  EmptyState,
   Input,
   KeyboardAwareScroll,
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
 import { showAlert } from "../../../src/lib/alert";
-import { supabase } from "../../../src/lib/supabase";
+import { supabase, TEAM_COLUMNS } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
 import type {
@@ -58,16 +59,28 @@ export default function FixtureScreen() {
   const [awayScore, setAwayScore] = useState("");
   const [entries, setEntries] = useState<Record<string, StatEntry>>({});
   const [busy, setBusy] = useState(false);
+  // Players with stats on this match who are no longer in either squad, so
+  // their line still shows a name rather than "Unknown".
+  const [formerPlayers, setFormerPlayers] = useState<Profile[]>([]);
+  const [problem, setProblem] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data: matchData } = await supabase
+    const { data: matchData, error: matchError } = await supabase
       .from("matches")
       .select(
-        "*, home:teams!matches_home_team_id_fkey(*), away:teams!matches_away_team_id_fkey(*)",
+        `*, home:teams!matches_home_team_id_fkey(${TEAM_COLUMNS}), away:teams!matches_away_team_id_fkey(${TEAM_COLUMNS})`,
       )
       .eq("id", id)
-      .single<MatchWithTeams>();
-    if (!matchData) return;
+      .maybeSingle<MatchWithTeams>();
+    if (!matchData) {
+      setProblem(
+        matchError
+          ? "Couldn't load this fixture. Check your connection and try again."
+          : "This fixture no longer exists. One of the teams may have been deleted.",
+      );
+      return;
+    }
+    setProblem(null);
     setMatch(matchData);
 
     const [homeRes, awayRes, statsRes, attendanceRes] = await Promise.all([
@@ -84,7 +97,18 @@ export default function FixtureScreen() {
     ]);
     setHomeMembers(((homeRes.data ?? []) as any[]).map((r) => r.profiles as Profile));
     setAwayMembers(((awayRes.data ?? []) as any[]).map((r) => r.profiles as Profile));
-    setSavedStats((statsRes.data ?? []) as MatchPlayerStats[]);
+    const stats = (statsRes.data ?? []) as MatchPlayerStats[];
+    setSavedStats(stats);
+    const current = new Set(
+      [...(homeRes.data ?? []), ...(awayRes.data ?? [])].map((r: any) => r.profiles?.id),
+    );
+    const former = stats.map((s) => s.player_id).filter((pid) => !current.has(pid));
+    if (former.length > 0) {
+      const { data } = await supabase.from("profiles").select("*").in("id", former);
+      setFormerPlayers((data ?? []) as Profile[]);
+    } else {
+      setFormerPlayers([]);
+    }
     setAttendance((attendanceRes.data ?? []) as MatchAttendance[]);
   }, [id]);
 
@@ -94,6 +118,13 @@ export default function FixtureScreen() {
     }, [load]),
   );
 
+  if (problem) {
+    return (
+      <View style={styles.screen}>
+        <EmptyState text={problem} />
+      </View>
+    );
+  }
   if (!match) return <Loading />;
 
   const isHomeCaptain = match.home.captain_id === userId;
@@ -209,9 +240,25 @@ export default function FixtureScreen() {
       showAlert("Save failed", matchError.message);
       return;
     }
-    // Replace stats wholesale so unchecking "played" removes stale rows.
-    await supabase.from("match_player_stats").delete().eq("match_id", match.id);
-    const rows = [...homeMembers, ...awayMembers]
+    // Only the players listed on screen are touched. Anyone who has left
+    // either squad since keeps the stats already recorded for this match.
+    const squad = [...homeMembers, ...awayMembers];
+    const unticked = squad
+      .filter((member) => !entries[member.id]?.played)
+      .map((member) => member.id);
+    if (unticked.length > 0) {
+      const { error: removeError } = await supabase
+        .from("match_player_stats")
+        .delete()
+        .eq("match_id", match.id)
+        .in("player_id", unticked);
+      if (removeError) {
+        setBusy(false);
+        showAlert("Stats save failed", removeError.message);
+        return;
+      }
+    }
+    const rows = squad
       .filter((member) => entries[member.id]?.played)
       .map((member) => ({
         match_id: match.id,
@@ -225,7 +272,9 @@ export default function FixtureScreen() {
       }));
     const { error: statsError } =
       rows.length > 0
-        ? await supabase.from("match_player_stats").insert(rows)
+        ? await supabase
+            .from("match_player_stats")
+            .upsert(rows, { onConflict: "match_id,player_id" })
         : { error: null };
     setBusy(false);
     if (statsError) {
@@ -243,7 +292,9 @@ export default function FixtureScreen() {
       <Card style={{ gap: 8 }}>
         <SectionTitle>{team.name}</SectionTitle>
         {rows.map((row) => {
-          const player = members.find((m) => m.id === row.player_id);
+          const player =
+            members.find((m) => m.id === row.player_id) ??
+            formerPlayers.find((m) => m.id === row.player_id);
           return (
             <View key={row.id} style={styles.statLine}>
               <Text style={styles.statName}>

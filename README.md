@@ -6,7 +6,7 @@ with your friends.
 
 ## Features
 
-- **Player cards** — self-assigned PAC/SHO/PAS/DRI/DEF/PHY stats, 12 positions,
+- **Player cards** — self-assigned PAC/SHO/PAS/DRI/DEF/PHY stats (goalkeepers get their own six), 13 positions,
   overall auto-calculated with position-weighted averages, and card tiers
   (Bronze < 65, Silver 65–74, Gold 75+) on an original diamond-shield card design.
 - **Card photos** — put a picture from your photo library on your card, with a

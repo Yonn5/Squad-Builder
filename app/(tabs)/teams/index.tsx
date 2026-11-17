@@ -16,7 +16,7 @@ import {
   SectionTitle,
 } from "../../../src/components/ui";
 import { showAlert } from "../../../src/lib/alert";
-import { supabase } from "../../../src/lib/supabase";
+import { supabase, TEAM_COLUMNS } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
 import type { Team } from "../../../src/types";
@@ -26,13 +26,17 @@ export default function TeamsScreen() {
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [newName, setNewName] = useState("");
   const [joinCode, setJoinCode] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    if (!userId) return;
+    const { data, error } = await supabase
       .from("team_members")
-      .select("teams(*)")
+      .select(`teams(${TEAM_COLUMNS})`)
       .eq("user_id", userId);
+    // A failed load must not read as "you have no teams".
+    setLoadFailed(!!error);
     setTeams(((data ?? []) as any[]).map((row) => row.teams as Team));
   }, [userId]);
 
@@ -43,13 +47,13 @@ export default function TeamsScreen() {
   );
 
   const createTeam = async () => {
-    setBusy(true);
+    setBusy("create");
     const { data, error } = await supabase
       .from("teams")
       .insert({ name: newName.trim(), captain_id: userId })
-      .select()
+      .select(TEAM_COLUMNS)
       .single<Team>();
-    setBusy(false);
+    setBusy(null);
     if (error || !data) {
       showAlert("Could not create team", error?.message ?? "Unknown error");
       return;
@@ -59,14 +63,14 @@ export default function TeamsScreen() {
   };
 
   const joinTeam = async () => {
-    setBusy(true);
+    setBusy("join");
     // join_team verifies the invite code server-side and adds the caller.
     // Membership can't be inserted directly, so knowing a team id is not
     // enough to join one.
     const { data: teamId, error } = await supabase.rpc("join_team", {
       p_code: joinCode.trim().toUpperCase(),
     });
-    setBusy(false);
+    setBusy(null);
     if (error || !teamId) {
       showAlert("Could not join", error?.message ?? "No team with that code.");
       return;
@@ -80,7 +84,9 @@ export default function TeamsScreen() {
   return (
     <KeyboardAwareScroll contentContainerStyle={styles.content}>
       <SectionTitle>My Teams</SectionTitle>
-      {teams.length === 0 ? (
+      {loadFailed ? (
+        <EmptyState text="Couldn't load your teams. Check your connection, then come back to this tab." />
+      ) : teams.length === 0 ? (
         <EmptyState text="You're not in any team yet. Create one or join with a code from your captain." />
       ) : (
         teams.map((team) => (
@@ -114,8 +120,8 @@ export default function TeamsScreen() {
         <Button
           title="Create Team"
           onPress={createTeam}
-          loading={busy}
-          disabled={newName.trim().length < 2}
+          loading={busy === "create"}
+          disabled={newName.trim().length < 2 || busy !== null}
         />
       </Card>
 
@@ -132,8 +138,8 @@ export default function TeamsScreen() {
           title="Join Team"
           onPress={joinTeam}
           variant="secondary"
-          loading={busy}
-          disabled={joinCode.trim().length !== 6}
+          loading={busy === "join"}
+          disabled={joinCode.trim().length !== 6 || busy !== null}
         />
       </Card>
     </KeyboardAwareScroll>
@@ -141,7 +147,6 @@ export default function TeamsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, gap: 12, paddingBottom: 40 },
   teamRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   crest: {

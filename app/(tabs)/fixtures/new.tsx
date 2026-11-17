@@ -12,10 +12,20 @@ import {
   SectionTitle,
 } from "../../../src/components/ui";
 import { showAlert } from "../../../src/lib/alert";
-import { supabase } from "../../../src/lib/supabase";
+import { supabase, TEAM_COLUMNS } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
 import type { Team } from "../../../src/types";
+
+/** "7:30", "07:30" and "19:00" all work; anything else is null. */
+function parseTime(text: string): string | null {
+  const match = text.trim().match(/^(\d{1,2})[:.](\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return `${String(hours).padStart(2, "0")}:${match[2]}`;
+}
 
 const todayKey = () => {
   const d = new Date();
@@ -41,7 +51,7 @@ export default function NewFixtureScreen() {
   const load = useCallback(async () => {
     const { data } = await supabase
       .from("teams")
-      .select("*")
+      .select(TEAM_COLUMNS)
       .eq("captain_id", userId);
     const mine = (data ?? []) as Team[];
     setMyTeams(mine);
@@ -67,12 +77,17 @@ export default function NewFixtureScreen() {
   const findOpponent = async () => {
     const code = opponentCode.trim().toUpperCase();
     setSearching(true);
-    const { data: team } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("join_code", code)
-      .maybeSingle<Team>();
+    // Invite codes are private, so the lookup goes through a function that
+    // returns the team for an exact code and nothing else.
+    const { data, error } = await supabase.rpc("find_team_by_code", {
+      p_code: code,
+    });
     setSearching(false);
+    if (error) {
+      showAlert("Search failed", "Couldn't reach the server. Check your connection and try again.");
+      return;
+    }
+    const team = ((data ?? []) as Team[])[0];
     if (!team) {
       showAlert("No match", `No team found with invite code ${code}.`);
       return;
@@ -86,9 +101,14 @@ export default function NewFixtureScreen() {
 
   const propose = async () => {
     if (!homeTeam || !awayTeam) return;
-    const kickoff = new Date(`${date}T${time.trim()}:00`);
-    if (isNaN(kickoff.getTime())) {
-      showAlert("Invalid time", "Enter the kickoff time as HH:MM (24h).");
+    const clock = parseTime(time);
+    const kickoff = new Date(`${date}T${clock}:00`);
+    if (!clock || isNaN(kickoff.getTime())) {
+      showAlert("Invalid time", "Enter the kickoff time as hours:minutes, e.g. 19:00 or 7:30.");
+      return;
+    }
+    if (kickoff.getTime() < Date.now()) {
+      showAlert("That kickoff has passed", "Pick a later time, or a later date on the calendar.");
       return;
     }
     setBusy(true);

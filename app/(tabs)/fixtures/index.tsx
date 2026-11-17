@@ -14,7 +14,7 @@ import {
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
-import { supabase } from "../../../src/lib/supabase";
+import { supabase, TEAM_COLUMNS } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
 import { colors } from "../../../src/theme";
 import type { Match, Team } from "../../../src/types";
@@ -43,6 +43,7 @@ export default function FixturesScreen() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!userId) return;
     const { data: memberships } = await supabase
       .from("team_members")
       .select("team_id")
@@ -56,11 +57,19 @@ export default function FixturesScreen() {
     const { data } = await supabase
       .from("matches")
       .select(
-        "*, home:teams!matches_home_team_id_fkey(*), away:teams!matches_away_team_id_fkey(*)",
+        `*, home:teams!matches_home_team_id_fkey(${TEAM_COLUMNS}), away:teams!matches_away_team_id_fkey(${TEAM_COLUMNS})`,
       )
       .or(`home_team_id.in.${idList},away_team_id.in.${idList}`)
       .order("kickoff_at");
-    setMatches((data ?? []) as MatchWithTeams[]);
+    // Next match first: upcoming fixtures soonest-first, then past ones
+    // most-recent-first, so old results never bury what is coming up.
+    const now = Date.now();
+    const all = (data ?? []) as MatchWithTeams[];
+    const at = (m: MatchWithTeams) => new Date(m.kickoff_at).getTime();
+    setMatches([
+      ...all.filter((m) => at(m) >= now),
+      ...all.filter((m) => at(m) < now).reverse(),
+    ]);
   }, [userId]);
 
   useFocusEffect(
@@ -71,7 +80,9 @@ export default function FixturesScreen() {
 
   const matchDays = useMemo(() => {
     const days = new Map<string, number>();
+    // Declined fixtures are not listed, so they must not mark the calendar.
     for (const match of matches ?? []) {
+      if (match.status === "dropped") continue;
       const key = dayKey(new Date(match.kickoff_at));
       days.set(key, (days.get(key) ?? 0) + 1);
     }

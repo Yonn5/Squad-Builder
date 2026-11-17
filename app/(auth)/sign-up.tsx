@@ -24,6 +24,18 @@ export default function SignUp() {
     setError(null);
     setNotice(null);
     setLoading(true);
+    // A taken name would otherwise fail inside account creation, which
+    // Supabase reports as a server error ("Server unresponsive").
+    const name = username.trim();
+    const { data: free, error: checkError } = await supabase.rpc(
+      "username_available",
+      { p_username: name },
+    );
+    if (!checkError && free === false) {
+      setLoading(false);
+      setError(`"${name}" is already taken. Pick another player name.`);
+      return;
+    }
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -51,6 +63,7 @@ export default function SignUp() {
             setError(null);
           }}
           autoCapitalize="none"
+          maxLength={24}
           placeholder="your player name"
         />
         <Label>Email</Label>
