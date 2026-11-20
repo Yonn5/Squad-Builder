@@ -32,7 +32,9 @@ function RootNavigator() {
     const inAuthGroup = segments[0] === "(auth)";
     if (!session && !inAuthGroup) {
       router.replace("/sign-in");
-    } else if (session && inAuthGroup) {
+    } else if (session && inAuthGroup && (segments as string[])[1] !== "forgot-password") {
+      // (Entering a reset code signs the player in a moment before the
+      // new-password screen is opened, so that screen is left alone.)
       router.replace("/");
     }
   }, [session, loading, recovery.status, segments, router]);

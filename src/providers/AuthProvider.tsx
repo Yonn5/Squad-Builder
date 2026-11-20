@@ -19,7 +19,8 @@ import { supabase } from "../lib/supabase";
  * Where a password-reset link has got to:
  *   idle     no link opened
  *   working  signing in with the link
- *   ready    signed in from the link; the player now picks a new password
+ *   ready    signed in from the link or code; the player now picks a new
+ *            password
  *   failed   the link was expired, used or broken (message says which)
  */
 export type Recovery =
@@ -32,6 +33,8 @@ type AuthContextValue = {
   session: Session | null;
   loading: boolean;
   recovery: Recovery;
+  /** Signed in with a reset code: go and pick a new password. */
+  startRecovery: () => void;
   clearRecovery: () => void;
 };
 
@@ -39,6 +42,7 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   loading: true,
   recovery: { status: "idle" },
+  startRecovery: () => {},
   clearRecovery: () => {},
 });
 
@@ -94,10 +98,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [openLink]);
 
+  const startRecovery = useCallback(() => setRecovery({ status: "ready" }), []);
   const clearRecovery = useCallback(() => setRecovery({ status: "idle" }), []);
 
   return (
-    <AuthContext.Provider value={{ session, loading, recovery, clearRecovery }}>
+    <AuthContext.Provider value={{ session, loading, recovery, startRecovery, clearRecovery }}>
       {children}
     </AuthContext.Provider>
   );

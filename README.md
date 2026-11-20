@@ -26,7 +26,7 @@ with your friends.
   (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2, 3-4-3) formation; players claim open slots on a
   live pitch view (realtime via Supabase).
 - **Accounts** — sign up with an email and password; "Forgot password?" emails
-  a reset link that opens a new-password screen in the app.
+  a code (typed on any device) and a link that open a new-password screen.
 - **Chemistry** — +3 in-position, +1 adjacent, 0 out of position, plus a +1
   bonus for sharing a PlayStyle category with a teammate.
 - **Fixtures** — captain-to-captain match proposals with accept/decline, a
@@ -60,7 +60,12 @@ with your friends.
      and `squadbuilder://**` (an installed build).
 
    Without these, Supabase sends the link to its default `localhost:3000`,
-   where nothing is running. The built-in email service only sends a few
+   where nothing is running.
+5. So the reset email carries a code that works on any device (the link only
+   opens on the device that asked), paste
+   `supabase/email-templates/reset-password.html` into **Authentication →
+   Emails → Reset Password** (switch the editor to its source/HTML view) and
+   save. The subject can be "Reset your Squad Builder password". The built-in email service only sends a few
    emails an hour; set up your own SMTP under **Authentication → Emails** if
    players need more.
 
