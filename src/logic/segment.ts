@@ -97,50 +97,125 @@ function bucketOf(data: Uint8Array, p: number): number {
 /**
  * Chooses which edge pixels the background fill may start from.
  *
- * Two rules, both aimed at the same failure: seeding the fill with the
+ * Both rules are aimed at the same failure: seeding the fill with the
  * player's own colour and erasing him.
  *
- * 1. Only edges a player rarely touches are considered — the top of the
- *    frame, the upper part of the sides, and the bottom corners. A torso
- *    running off the bottom edge, or an arm out to one side, is skipped.
- * 2. Of those, only pixels whose colour is *common along the edge* are kept.
- *    The real backdrop dominates the border; whatever the player occupies is
- *    a minority of it.
+ * 1. The backdrop's colours are learnt from the edges a player rarely
+ *    touches: the top of the frame and the upper part of the sides. Only
+ *    colours that are *common* there count. The real backdrop dominates
+ *    those edges; a head touching the top is a minority of them.
+ * 2. The bottom corners are seeded from the very corner inwards, up to the
+ *    first sharp change of colour, and never with a colour that also fills
+ *    the middle of the bottom edge, where the player's body is. A shirt or hoodie
+ *    filling the bottom of the frame runs into both corners, and taking its
+ *    colour as backdrop used to erase the whole body, and any dark hair
+ *    joined to it. A backdrop that shades towards the bottom (a sky) is
+ *    still seeded there: its colour is not in the middle of the bottom edge.
+ *    Colours the upper edges already showed to be backdrop always count.
  */
 function pickSeeds(data: Uint8Array, w: number, h: number): number[] {
   const sideStop = Math.floor(h * 0.3);
   const bottomInset = Math.floor(w * 0.14);
-  const border: number[] = [];
-  for (let x = 0; x < w; x++) {
-    border.push(x);
-    if (x < bottomInset || x >= w - bottomInset) border.push((h - 1) * w + x);
-  }
+  const upper: number[] = [];
+  for (let x = 0; x < w; x++) upper.push(x);
   for (let y = 1; y < sideStop; y++) {
-    border.push(y * w);
-    border.push(y * w + w - 1);
+    upper.push(y * w);
+    upper.push(y * w + w - 1);
   }
 
   const counts = new Map<number, number>();
-  for (const p of border) {
+  for (const p of upper) {
     const bucket = bucketOf(data, p);
     counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
   }
 
   const ranked = [...counts].sort((a, b) => b[1] - a[1]);
-  const minShare = border.length * 0.02;
+  const minShare = upper.length * 0.02;
   const keep = new Set<number>();
   let covered = 0;
   for (const [bucket, count] of ranked) {
-    if (keep.size > 0 && (count < minShare || covered >= border.length * 0.9))
+    if (keep.size > 0 && (count < minShare || covered >= upper.length * 0.9))
       break;
     keep.add(bucket);
     covered += count;
   }
 
-  const seeds = border.filter((p) => keep.has(bucketOf(data, p)));
-  // A border with no dominant colour at all tells us nothing; fall back to
-  // using all of it rather than starting from a handful of pixels.
-  return seeds.length >= border.length * 0.2 ? seeds : border;
+  const seeds = upper.filter((p) => keep.has(bucketOf(data, p)));
+  // An upper edge with no dominant colour at all tells us nothing; fall back
+  // to using all of it rather than starting from a handful of pixels.
+  if (seeds.length < upper.length * 0.2) return upper;
+
+  if (h > 1) {
+    const row = (h - 1) * w;
+    const midStart = Math.floor(w * 0.3);
+    const midEnd = Math.max(midStart + 1, Math.ceil(w * 0.7));
+    // Compared by colour distance, not bucket: one dark hoodie easily spans
+    // two buckets between the corner and the middle.
+    const near = 40 * 40;
+    const bodyMin = (midEnd - midStart) * 0.1;
+    const onBody = (p: number) => {
+      let hits = 0;
+      for (let x = midStart; x < midEnd; x++) {
+        const q = (row + x) * 4;
+        const dr = data[p * 4] - data[q];
+        const dg = data[p * 4 + 1] - data[q + 1];
+        const db = data[p * 4 + 2] - data[q + 2];
+        if (dr * dr + dg * dg + db * db <= near && ++hits >= bodyMin) return true;
+      }
+      return false;
+    };
+    // Walk in from each corner and stop at the first sharp change of colour:
+    // the blurred rim of a shoulder is neither backdrop nor the body's own
+    // colour, and seeding it would let the fill into the shoulder.
+    const smooth = 30 * 30;
+    const walk = (from: number, step: number) => {
+      let prev = -1;
+      for (let i = 0; i < bottomInset; i++) {
+        const p = row + from + i * step;
+        if (prev >= 0) {
+          const dr = data[p * 4] - data[prev * 4];
+          const dg = data[p * 4 + 1] - data[prev * 4 + 1];
+          const db = data[p * 4 + 2] - data[prev * 4 + 2];
+          if (dr * dr + dg * dg + db * db > smooth) return;
+        }
+        if (!keep.has(bucketOf(data, p)) && onBody(p)) return;
+        seeds.push(p);
+        prev = p;
+      }
+    };
+    walk(0, 1);
+    walk(w - 1, -1);
+  }
+  return seeds;
+}
+
+/**
+ * How much the backdrop varies, per colour channel: the spread of each seed
+ * around the average of its own colour group. Measured within groups so a
+ * backdrop of two flat colours (a wall and a door) is not mistaken for a
+ * busy one, which would loosen the fill enough to leak into the player.
+ */
+function seedSpread(data: Uint8Array, seeds: number[]): number {
+  if (!seeds.length) return 0;
+  const groups = new Map<number, [number, number, number, number]>();
+  for (const p of seeds) {
+    const b = bucketOf(data, p);
+    const g = groups.get(b) ?? [0, 0, 0, 0];
+    g[0] += data[p * 4];
+    g[1] += data[p * 4 + 1];
+    g[2] += data[p * 4 + 2];
+    g[3]++;
+    groups.set(b, g);
+  }
+  let sq = 0;
+  for (const p of seeds) {
+    const g = groups.get(bucketOf(data, p))!;
+    for (let c = 0; c < 3; c++) {
+      const d = data[p * 4 + c] - g[c] / g[3];
+      sq += d * d;
+    }
+  }
+  return Math.sqrt(sq / (seeds.length * 3));
 }
 
 /** Typical colour step between neighbouring pixels along the top edge. */
@@ -238,18 +313,7 @@ function floodBackground(data: Uint8Array, w: number, h: number): Uint8Array {
 
   const seeds = pickSeeds(data, w, h);
 
-  let sum = 0;
-  let sumSq = 0;
-  for (const p of seeds) {
-    for (let c = 0; c < 3; c++) {
-      const v = data[p * 4 + c];
-      sum += v;
-      sumSq += v * v;
-    }
-  }
-  const count = seeds.length * 3;
-  const mean = sum / count;
-  const spread = Math.sqrt(Math.max(0, sumSq / count - mean * mean));
+  const spread = seedSpread(data, seeds);
   // A busy backdrop needs a looser fill to cover at all; a flat one needs a
   // tight fill so the player's shirt never gets swallowed.
   const grain = edgeGrain(data, w);
