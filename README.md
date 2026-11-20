@@ -27,6 +27,12 @@ with your friends.
   live pitch view (realtime via Supabase).
 - **Accounts** — sign up with an email and password; "Forgot password?" emails
   a code (typed on any device) and a link that open a new-password screen.
+- **Photo cut-out** — "Remove Background" uses Google's MediaPipe selfie
+  segmentation model (Apache 2.0), run in a hidden WebView on phones and in
+  the page on the web. The engine (~9 MB) and model (~250 KB) download the
+  first time and are cached after that; without a connection it falls back
+  to a colour-based cut-out that works offline. Erase/Restore brushes touch
+  up either result.
 - **Chemistry** — +3 in-position, +1 adjacent, 0 out of position, plus a +1
   bonus for sharing a PlayStyle category with a teammate.
 - **Fixtures** — captain-to-captain match proposals with accept/decline, a

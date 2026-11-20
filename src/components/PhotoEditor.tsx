@@ -33,8 +33,10 @@ import {
   type Rect,
   type Stroke,
 } from "../logic/mask";
+import type { PersonSegmenter } from "../lib/personSegmenter";
 import { subjectMask, type Bitmap } from "../logic/segment";
 import { colors } from "../theme";
+import { PersonSegmenterHost } from "./PersonSegmenterHost";
 import { Button } from "./ui";
 
 /**
@@ -112,6 +114,7 @@ export function PhotoEditor({
   const autoAlphaRef = useRef<Uint8Array | null>(null);
   const [canvas, setCanvas] = useState({ width: 0, height: 0 });
   const insets = useModalInsets();
+  const segmenter = useRef<PersonSegmenter>(null);
 
   modeRef.current = mode;
   brushRef.current = brush;
@@ -160,6 +163,8 @@ export function PhotoEditor({
     setAutoAlpha(autoAlphaRef.current);
     setAutoNote(null);
     setMode("crop");
+    // Fetch the cut-out model while the player is still cropping.
+    segmenter.current?.warm();
     loadPixels(source.uri, EDIT_SIZE)
       .then((bitmap) => {
         if (cancelled) return;
@@ -272,21 +277,47 @@ export function PhotoEditor({
     }),
   ).current;
 
-  const removeBackground = () => {
+  const removeBackground = async () => {
     const bitmap = pixels;
     if (!bitmap) return;
-    withSpinner("auto", () => {
+    setBusy("auto");
+    let alpha: Uint8Array | null = null;
+    let note: string | null = null;
+    try {
+      // The person model first: it recognises a person, so a busy room or
+      // dark clothes do not fool it.
+      const mask = await segmenter.current?.segment(bitmap);
+      if (mask) {
+        let kept = 0;
+        for (let i = 0; i < mask.length; i++) if (mask[i] > 128) kept++;
+        if (kept / mask.length >= 0.02) alpha = mask;
+      }
+      if (!alpha && mask) {
+        note = "No person found in this photo, so the basic cut-out was used. ";
+      }
+    } catch {
+      note =
+        "The smart cut-out couldn't load (it needs internet the first time), so the basic one was used. ";
+    }
+    if (!alpha) {
+      // Fallback: the colour-based fill, which works offline.
+      await new Promise((resolve) => setTimeout(resolve, 16));
       const result = subjectMask(bitmap);
-      autoAlphaRef.current = result.alpha;
-      setAutoAlpha(result.alpha);
-      setAutoNote(
-        result.dominance > 0.85 && result.coverage > 0.04
-          ? null
-          : "That came out in pieces — the background is close in colour to what the player is wearing. Use Restore to paint back what it took, or Reset and brush it by hand.",
-      );
-      refreshPreview(strokes, result.alpha);
-      setMode("restore");
-    });
+      alpha = result.alpha;
+      if (!(result.dominance > 0.85 && result.coverage > 0.04)) {
+        note =
+          (note ?? "") +
+          "That came out in pieces. Use Restore to paint back what it took, or Reset and brush it by hand.";
+      } else if (note) {
+        note += "Touch it up with Erase and Restore if needed.";
+      }
+    }
+    autoAlphaRef.current = alpha;
+    setAutoAlpha(alpha);
+    setAutoNote(note);
+    refreshPreview(strokesRef.current, alpha);
+    setMode("restore");
+    setBusy(null);
   };
 
   const undo = () => {
@@ -379,6 +410,7 @@ export function PhotoEditor({
       onRequestClose={onCancel}
     >
       <View style={[styles.screen, { paddingTop: insets.top }]}>
+        <PersonSegmenterHost ref={segmenter} />
         <View style={styles.header}>
           <TouchableOpacity
             testID="editor-cancel"
@@ -521,6 +553,9 @@ export function PhotoEditor({
             <View pointerEvents="none" style={styles.busy}>
               <ActivityIndicator color={colors.accent} size="large" />
               {busy === "save" ? <Text style={styles.busyText}>Saving…</Text> : null}
+              {busy === "auto" ? (
+                <Text style={styles.busyText}>Finding you in the photo…</Text>
+              ) : null}
             </View>
           )}
         </View>
