@@ -25,6 +25,8 @@ with your friends.
   3-2-3, 4-3-1, 3-4-1), 10v10 (4-3-2, 4-2-3, 3-4-2, 3-3-3, 4-4-1) or 11v11
   (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2, 3-4-3) formation; players claim open slots on a
   live pitch view (realtime via Supabase).
+- **Accounts** — sign up with an email and password; "Forgot password?" emails
+  a reset link that opens a new-password screen in the app.
 - **Chemistry** — +3 in-position, +1 adjacent, 0 out of position, plus a +1
   bonus for sharing a PlayStyle category with a teammate.
 - **Fixtures** — captain-to-captain match proposals with accept/decline, a
@@ -50,6 +52,17 @@ with your friends.
    the same conditions as the file.
 3. For a private friends-only app you may want to disable public signups or
    enable email confirmation under **Authentication → Providers**.
+4. Password reset emails link back into the app, so tell Supabase where the
+   app lives under **Authentication → URL Configuration**:
+   - **Site URL**: `http://localhost:8081` (the Expo web address while
+     developing; your real web address once it is hosted).
+   - **Redirect URLs**: add `http://localhost:8081/**`, `exp://**` (Expo Go)
+     and `squadbuilder://**` (an installed build).
+
+   Without these, Supabase sends the link to its default `localhost:3000`,
+   where nothing is running. The built-in email service only sends a few
+   emails an hour; set up your own SMTP under **Authentication → Emails** if
+   players need more.
 
 ### 2. App
 

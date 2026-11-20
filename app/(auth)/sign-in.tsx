@@ -55,6 +55,15 @@ export default function SignIn() {
           secureTextEntry
           placeholder="••••••••"
         />
+        <Link
+          href={{
+            pathname: "/forgot-password",
+            params: email.trim() ? { email: email.trim() } : {},
+          }}
+          style={styles.forgot}
+        >
+          Forgot password?
+        </Link>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button
           title="Sign In"
@@ -89,6 +98,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     lineHeight: 18,
+  },
+  forgot: {
+    color: colors.accent,
+    alignSelf: "flex-end",
+    fontSize: 13,
+    fontWeight: "600",
   },
   link: {
     color: colors.accent,

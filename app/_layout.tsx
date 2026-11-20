@@ -15,19 +15,27 @@ import { colors } from "../src/theme";
 silenceHandledNetworkLogs();
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, recovery } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
+    const onResetScreen = segments[0] === "reset-password";
+    // A reset link always ends up on the new-password screen, even when
+    // Supabase sent it to the home page instead.
+    if (recovery.status !== "idle") {
+      if (!onResetScreen) router.replace("/reset-password");
+      return;
+    }
+    if (onResetScreen) return; // open whether signed in or not
     const inAuthGroup = segments[0] === "(auth)";
     if (!session && !inAuthGroup) {
       router.replace("/sign-in");
     } else if (session && inAuthGroup) {
       router.replace("/");
     }
-  }, [session, loading, segments, router]);
+  }, [session, loading, recovery.status, segments, router]);
 
   if (loading) {
     return (
