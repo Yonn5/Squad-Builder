@@ -1,5 +1,9 @@
 import type { Position } from "./positions";
 
+/** Players per side, keeper included. */
+export const MATCH_SIZES = [6, 9, 10, 11] as const;
+export type MatchSize = (typeof MATCH_SIZES)[number];
+
 export type FormationSlot = {
   position: Position;
   /** Percentage across the pitch, 0 = left touchline, 100 = right. */
@@ -11,7 +15,7 @@ export type FormationSlot = {
 export type Formation = {
   key: string;
   label: string;
-  size: 6 | 10;
+  size: MatchSize;
   slots: FormationSlot[];
 };
 
@@ -155,9 +159,183 @@ export const FORMATIONS: Formation[] = [
       { position: "ST", x: 50, y: 20 },
     ],
   },
+  // ---------- 9v9 (GK + 8) ----------
+  {
+    key: "9v9-3-3-2",
+    label: "3-3-2",
+    size: 9,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "LM", x: 18, y: 48 },
+      { position: "CM", x: 50, y: 50 },
+      { position: "RM", x: 82, y: 48 },
+      { position: "ST", x: 34, y: 22 },
+      { position: "ST", x: 66, y: 22 },
+    ],
+  },
+  {
+    key: "9v9-3-2-3",
+    label: "3-2-3",
+    size: 9,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "CM", x: 34, y: 50 },
+      { position: "CM", x: 66, y: 50 },
+      { position: "LW", x: 18, y: 25 },
+      { position: "ST", x: 50, y: 19 },
+      { position: "RW", x: 82, y: 25 },
+    ],
+  },
+  {
+    key: "9v9-4-3-1",
+    label: "4-3-1",
+    size: 9,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "LB", x: 14, y: 71 },
+      { position: "CB", x: 38, y: 75 },
+      { position: "CB", x: 62, y: 75 },
+      { position: "RB", x: 86, y: 71 },
+      { position: "CM", x: 24, y: 48 },
+      { position: "CDM", x: 50, y: 54 },
+      { position: "CM", x: 76, y: 48 },
+      { position: "ST", x: 50, y: 20 },
+    ],
+  },
+  {
+    key: "9v9-3-4-1",
+    label: "3-4-1",
+    size: 9,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "LM", x: 12, y: 46 },
+      { position: "CM", x: 38, y: 50 },
+      { position: "CM", x: 62, y: 50 },
+      { position: "RM", x: 88, y: 46 },
+      { position: "ST", x: 50, y: 20 },
+    ],
+  },
+  // ---------- 11v11 (GK + 10) ----------
+  {
+    key: "11v11-4-4-2",
+    label: "4-4-2",
+    size: 11,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "LB", x: 12, y: 71 },
+      { position: "CB", x: 37, y: 75 },
+      { position: "CB", x: 63, y: 75 },
+      { position: "RB", x: 88, y: 71 },
+      { position: "LM", x: 12, y: 46 },
+      { position: "CM", x: 37, y: 50 },
+      { position: "CM", x: 63, y: 50 },
+      { position: "RM", x: 88, y: 46 },
+      { position: "ST", x: 36, y: 21 },
+      { position: "ST", x: 64, y: 21 },
+    ],
+  },
+  {
+    key: "11v11-4-3-3",
+    label: "4-3-3",
+    size: 11,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "LB", x: 12, y: 71 },
+      { position: "CB", x: 37, y: 75 },
+      { position: "CB", x: 63, y: 75 },
+      { position: "RB", x: 88, y: 71 },
+      { position: "CM", x: 25, y: 48 },
+      { position: "CDM", x: 50, y: 55 },
+      { position: "CM", x: 75, y: 48 },
+      { position: "LW", x: 18, y: 25 },
+      { position: "ST", x: 50, y: 19 },
+      { position: "RW", x: 82, y: 25 },
+    ],
+  },
+  {
+    key: "11v11-4-2-3-1",
+    label: "4-2-3-1",
+    size: 11,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "LB", x: 12, y: 72 },
+      { position: "CB", x: 37, y: 76 },
+      { position: "CB", x: 63, y: 76 },
+      { position: "RB", x: 88, y: 72 },
+      { position: "CDM", x: 34, y: 57 },
+      { position: "CDM", x: 66, y: 57 },
+      { position: "LM", x: 16, y: 39 },
+      { position: "CAM", x: 50, y: 42 },
+      { position: "RM", x: 84, y: 39 },
+      { position: "ST", x: 50, y: 18 },
+    ],
+  },
+  {
+    key: "11v11-3-5-2",
+    label: "3-5-2",
+    size: 11,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "LM", x: 10, y: 42 },
+      { position: "CM", x: 30, y: 49 },
+      { position: "CDM", x: 50, y: 56 },
+      { position: "CM", x: 70, y: 49 },
+      { position: "RM", x: 90, y: 42 },
+      { position: "ST", x: 36, y: 20 },
+      { position: "ST", x: 64, y: 20 },
+    ],
+  },
+  {
+    key: "11v11-5-3-2",
+    label: "5-3-2",
+    size: 11,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "LB", x: 10, y: 65 },
+      { position: "CB", x: 30, y: 74 },
+      { position: "CB", x: 50, y: 77 },
+      { position: "CB", x: 70, y: 74 },
+      { position: "RB", x: 90, y: 65 },
+      { position: "CM", x: 25, y: 46 },
+      { position: "CM", x: 50, y: 49 },
+      { position: "CM", x: 75, y: 46 },
+      { position: "ST", x: 36, y: 21 },
+      { position: "ST", x: 64, y: 21 },
+    ],
+  },
+  {
+    key: "11v11-3-4-3",
+    label: "3-4-3",
+    size: 11,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "LM", x: 12, y: 47 },
+      { position: "CM", x: 37, y: 51 },
+      { position: "CM", x: 63, y: 51 },
+      { position: "RM", x: 88, y: 47 },
+      { position: "LW", x: 18, y: 24 },
+      { position: "ST", x: 50, y: 18 },
+      { position: "RW", x: 82, y: 24 },
+    ],
+  },
 ];
 
-export function formationsForSize(size: 6 | 10): Formation[] {
+export function formationsForSize(size: MatchSize): Formation[] {
   return FORMATIONS.filter((f) => f.size === size);
 }
 

@@ -16,7 +16,9 @@ import {
 } from "../../../../src/components/ui";
 import {
   formationsForSize,
+  MATCH_SIZES,
   type Formation,
+  type MatchSize,
 } from "../../../../src/constants/formations";
 import { confirmDialog, showAlert } from "../../../../src/lib/alert";
 import { supabase, TEAM_COLUMNS } from "../../../../src/lib/supabase";
@@ -31,7 +33,7 @@ export default function TeamScreen() {
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [lineups, setLineups] = useState<Lineup[]>([]);
-  const [size, setSize] = useState<6 | 10>(6);
+  const [size, setSize] = useState<MatchSize>(6);
   const [formation, setFormation] = useState<Formation | null>(null);
   const [busy, setBusy] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -276,7 +278,7 @@ export default function TeamScreen() {
         <Card style={{ gap: 10 }}>
           <SectionTitle>New lineup</SectionTitle>
           <View style={styles.sizeRow}>
-            {([6, 10] as const).map((option) => (
+            {MATCH_SIZES.map((option) => (
               <TouchableOpacity
                 key={option}
                 onPress={() => {

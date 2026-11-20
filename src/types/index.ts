@@ -1,3 +1,4 @@
+import type { MatchSize } from "../constants/formations";
 import type { Position } from "../constants/positions";
 
 export type Stats = {
@@ -59,7 +60,7 @@ export type Lineup = {
   team_id: string;
   name: string;
   formation: string;
-  size: 6 | 10;
+  size: MatchSize;
   created_at: string;
 };
 
@@ -93,8 +94,8 @@ export type Match = {
   kickoff_at: string;
   location: string | null;
   status: MatchStatus;
-  /** 6 or 10 a side; null for fixtures created before formats existed. */
-  size: 6 | 10 | null;
+  /** Players a side; null for fixtures created before formats existed. */
+  size: MatchSize | null;
   home_score: number | null;
   away_score: number | null;
   created_at: string;

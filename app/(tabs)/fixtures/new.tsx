@@ -11,6 +11,7 @@ import {
   Loading,
   SectionTitle,
 } from "../../../src/components/ui";
+import { MATCH_SIZES, type MatchSize } from "../../../src/constants/formations";
 import { showAlert } from "../../../src/lib/alert";
 import { supabase, TEAM_COLUMNS } from "../../../src/lib/supabase";
 import { useUserId } from "../../../src/providers/AuthProvider";
@@ -44,7 +45,7 @@ export default function NewFixtureScreen() {
   const [awayTeam, setAwayTeam] = useState<Team | null>(null);
   const [searching, setSearching] = useState(false);
   const [time, setTime] = useState("19:00");
-  const [size, setSize] = useState<6 | 10>(6);
+  const [size, setSize] = useState<MatchSize>(6);
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -215,7 +216,7 @@ export default function NewFixtureScreen() {
         <Input value={time} onChangeText={setTime} placeholder="19:00" />
         <Label>Format</Label>
         <View style={styles.chips}>
-          {([6, 10] as const).map((option) => (
+          {MATCH_SIZES.map((option) => (
             <TouchableOpacity
               key={option}
               onPress={() => setSize(option)}

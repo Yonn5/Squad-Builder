@@ -21,8 +21,9 @@ with your friends.
   custom icon badges on the card.
 - **Teams** — create a team (creator becomes captain) and invite friends with a
   6-character join code.
-- **Lineups** — captains pick 6v6 (2-2-1, 2-1-2, 3-1-1, 1-2-2) or 10v10
-  (4-3-2, 4-2-3, 3-4-2, 3-3-3, 4-4-1) formations; players claim open slots on a
+- **Lineups** — captains pick a 6v6 (2-2-1, 2-1-2, 3-1-1, 1-2-2), 9v9 (3-3-2,
+  3-2-3, 4-3-1, 3-4-1), 10v10 (4-3-2, 4-2-3, 3-4-2, 3-3-3, 4-4-1) or 11v11
+  (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2, 3-4-3) formation; players claim open slots on a
   live pitch view (realtime via Supabase).
 - **Chemistry** — +3 in-position, +1 adjacent, 0 out of position, plus a +1
   bonus for sharing a PlayStyle category with a teammate.
