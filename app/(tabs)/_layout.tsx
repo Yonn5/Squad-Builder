@@ -21,7 +21,7 @@ export default function TabsLayout() {
         options={{
           title: "My Card",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" color={color} size={size} />
+            <Ionicons name="person" color={color as string} size={size} />
           ),
         }}
       />
@@ -30,7 +30,7 @@ export default function TabsLayout() {
         options={{
           title: "Teams",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" color={color} size={size} />
+            <Ionicons name="people" color={color as string} size={size} />
           ),
         }}
       />
@@ -39,7 +39,7 @@ export default function TabsLayout() {
         options={{
           title: "Fixtures",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar" color={color} size={size} />
+            <Ionicons name="calendar" color={color as string} size={size} />
           ),
         }}
       />
