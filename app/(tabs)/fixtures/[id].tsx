@@ -87,11 +87,13 @@ export default function FixtureScreen() {
       supabase
         .from("team_members")
         .select("profiles(*)")
-        .eq("team_id", matchData.home_team_id),
+        .eq("team_id", matchData.home_team_id)
+        .order("joined_at"),
       supabase
         .from("team_members")
         .select("profiles(*)")
-        .eq("team_id", matchData.away_team_id),
+        .eq("team_id", matchData.away_team_id)
+        .order("joined_at"),
       supabase.from("match_player_stats").select("*").eq("match_id", id),
       supabase.from("match_attendance").select("*").eq("match_id", id),
     ]);

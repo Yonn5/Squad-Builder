@@ -33,7 +33,11 @@ export default function SquadScreen() {
         .select(TEAM_COLUMNS)
         .eq("id", id)
         .maybeSingle<Team>(),
-      supabase.from("team_members").select("profiles(*)").eq("team_id", id),
+      supabase
+        .from("team_members")
+        .select("profiles(*)")
+        .eq("team_id", id)
+        .order("joined_at"),
     ]);
     setProblem(
       teamRes.error || membersRes.error

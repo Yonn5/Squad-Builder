@@ -32,7 +32,11 @@ export default function LineupScreen() {
         .select("*")
         .eq("lineup_id", lineupId)
         .order("slot_index"),
-      supabase.from("team_members").select("profiles(*)").eq("team_id", teamId),
+      supabase
+        .from("team_members")
+        .select("profiles(*)")
+        .eq("team_id", teamId)
+        .order("joined_at"),
     ]);
     setProblem(
       lineupRes.error || teamRes.error

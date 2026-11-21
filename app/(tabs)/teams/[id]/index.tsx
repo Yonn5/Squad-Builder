@@ -44,7 +44,11 @@ export default function TeamScreen() {
   const load = useCallback(async () => {
     const [teamRes, membersRes, lineupsRes, codeRes] = await Promise.all([
       supabase.from("teams").select(TEAM_COLUMNS).eq("id", id).maybeSingle<Team>(),
-      supabase.from("team_members").select("profiles(*)").eq("team_id", id),
+      supabase
+        .from("team_members")
+        .select("profiles(*)")
+        .eq("team_id", id)
+        .order("joined_at"),
       supabase
         .from("lineups")
         .select("*")
