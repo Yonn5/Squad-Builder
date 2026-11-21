@@ -13,6 +13,7 @@ export default function TeamsLayout() {
     >
       <Stack.Screen name="index" options={{ title: "Teams" }} />
       <Stack.Screen name="[id]/index" options={{ title: "Team" }} />
+      <Stack.Screen name="[id]/squad" options={{ title: "Squad" }} />
       <Stack.Screen name="[id]/lineups/[lineupId]" options={{ title: "Lineup" }} />
     </Stack>
   );

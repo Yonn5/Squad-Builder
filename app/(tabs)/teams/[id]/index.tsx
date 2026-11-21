@@ -22,9 +22,9 @@ import {
 } from "../../../../src/constants/formations";
 import { confirmDialog, showAlert } from "../../../../src/lib/alert";
 import { supabase, TEAM_COLUMNS } from "../../../../src/lib/supabase";
-import { overallFor, tierFor } from "../../../../src/logic/overall";
+import { overallFor } from "../../../../src/logic/overall";
 import { useUserId } from "../../../../src/providers/AuthProvider";
-import { colors, tierColors } from "../../../../src/theme";
+import { colors } from "../../../../src/theme";
 import type { Lineup, Profile, Team } from "../../../../src/types";
 
 export default function TeamScreen() {
@@ -87,6 +87,13 @@ export default function TeamScreen() {
   const isCaptain = team.captain_id === userId;
   const isMember = members.some((member) => member.id === userId);
   const formations = formationsForSize(size);
+  const captain = members.find((member) => member.id === team.captain_id);
+  const averageOverall = members.length
+    ? Math.round(
+        members.reduce((sum, member) => sum + overallFor(member), 0) /
+          members.length,
+      )
+    : 0;
 
   const createLineup = async () => {
     if (!formation) return;
@@ -119,26 +126,6 @@ export default function TeamScreen() {
       return;
     }
     router.push(`/teams/${team.id}/lineups/${lineup.id}`);
-  };
-
-  const removeMember = async (member: Profile) => {
-    if (
-      !(await confirmDialog(
-        "Kick player",
-        `Kick ${member.username} out of ${team.name}? Their card and career stats are not affected.`,
-        "Kick",
-      ))
-    )
-      return;
-    setBusy(true);
-    const { error } = await supabase
-      .from("team_members")
-      .delete()
-      .eq("team_id", team.id)
-      .eq("user_id", member.id);
-    setBusy(false);
-    if (error) showAlert("Could not kick player", error.message);
-    else load();
   };
 
   const deleteLineup = async (lineup: Lineup) => {
@@ -203,37 +190,22 @@ export default function TeamScreen() {
         </Card>
       )}
 
-      <SectionTitle>Squad ({members.length})</SectionTitle>
-      {members.map((member) => {
-        const overall = overallFor(member);
-        const tier = tierColors[tierFor(overall)];
-        return (
-          <Card key={member.id} style={styles.memberRow}>
-            <View style={[styles.ovrBadge, { backgroundColor: tier.gradient[1] }]}>
-              <Text style={[styles.ovrText, { color: tier.text }]}>{overall}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.memberName}>
-                {member.username}
-                {member.id === team.captain_id ? "  ©" : ""}
-              </Text>
-              <Text style={styles.memberPos}>{member.position}</Text>
-            </View>
-            <Text style={styles.memberStyles}>
-              {member.playstyles.length} PS+
+      <TouchableOpacity
+        onPress={() => router.push(`/teams/${team.id}/squad`)}
+        accessibilityRole="button"
+        testID="team-squad"
+      >
+        <Card style={styles.memberRow}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={styles.squadTitle}>Squad ({members.length})</Text>
+            <Text style={styles.memberPos}>
+              {captain ? `Captain: ${captain.username}` : "No captain"}
+              {members.length ? `  ·  Average ${averageOverall} OVR` : ""}
             </Text>
-            {isCaptain && member.id !== team.captain_id && (
-              <TouchableOpacity
-                onPress={() => removeMember(member)}
-                hitSlop={10}
-                style={styles.removeBtn}
-              >
-                <Text style={styles.removeText}>Kick</Text>
-              </TouchableOpacity>
-            )}
-          </Card>
-        );
-      })}
+          </View>
+          <Text style={styles.chev}>›</Text>
+        </Card>
+      </TouchableOpacity>
 
       <SectionTitle>Lineups</SectionTitle>
       {lineups.length === 0 ? (
@@ -362,17 +334,9 @@ const styles = StyleSheet.create({
     letterSpacing: 6,
   },
   memberRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  ovrBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ovrText: { fontWeight: "800", fontSize: 15 },
   memberName: { color: colors.text, fontWeight: "700", fontSize: 15 },
+  squadTitle: { color: colors.text, fontWeight: "800", fontSize: 17 },
   memberPos: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  memberStyles: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
   lineupMain: { flex: 1, flexDirection: "row", alignItems: "center" },
   removeBtn: {
     borderWidth: 1.5,
