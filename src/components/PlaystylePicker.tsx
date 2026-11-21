@@ -1,10 +1,12 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
-  PLAYSTYLE_LIMITS,
   PLAYSTYLES_BY_CATEGORY,
   PLAYSTYLE_CATEGORIES,
+  limitHolder,
+  nextLimitHint,
   playstyleCount,
+  playstyleLimit,
 } from "../constants/playstyles";
 import type { CardTier } from "../logic/overall";
 import { categoryColors, colors } from "../theme";
@@ -12,15 +14,18 @@ import { PlaystyleBadge } from "./PlaystyleBadge";
 
 /**
  * Category-grouped PlayStyle+ selector. How many can be picked depends on
- * the card's colour: bronze 1, silver 2, gold 4.
+ * the card's rating: bronze 1, silver 2, gold 3, 90+ all four.
  */
 export function PlaystylePicker({
   selected,
   onChange,
   tier = "gold",
+  overall,
 }: {
   selected: string[];
   onChange: (next: string[]) => void;
+  /** The card's rating, which sets how many can be picked. */
+  overall: number;
   /** Colour the badges like the card they will sit on. */
   tier?: CardTier;
 }) {
@@ -32,22 +37,22 @@ export function PlaystylePicker({
     }
   };
 
-  const limit = PLAYSTYLE_LIMITS[tier];
+  const limit = playstyleLimit(overall);
   const full = selected.length >= limit;
   const over = selected.length - limit;
-  const tierName = tier[0].toUpperCase() + tier.slice(1);
+  const holder = limitHolder(overall);
+  const hint = nextLimitHint(overall);
 
   return (
     <View style={{ gap: 14 }}>
       <Text style={styles.counter} testID="playstyle-counter">
-        {selected.length}/{limit} selected · {tierName} cards hold{" "}
-        {playstyleCount(limit)}
-        {tier !== "gold" ? ". Raise your rating for more." : ""}
+        {selected.length}/{limit} selected · {holder} hold{" "}
+        {playstyleCount(limit)}.{hint ? ` ${hint}` : ""}
       </Text>
       {over > 0 ? (
         <Text style={styles.over}>
-          Your card is {tierName} now, which holds {playstyleCount(limit)}.
-          Remove {over} to save.
+          At {overall} your card holds {playstyleCount(limit)}. Remove {over}{" "}
+          to save.
         </Text>
       ) : null}
       {PLAYSTYLE_CATEGORIES.map((category) => (

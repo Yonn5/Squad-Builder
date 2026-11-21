@@ -7,8 +7,6 @@ export const PLAYSTYLE_CATEGORIES = [
   "Goalkeeper",
 ] as const;
 
-import type { CardTier } from "../logic/overall";
-
 export type PlaystyleCategory = (typeof PLAYSTYLE_CATEGORIES)[number];
 
 export type Playstyle = {
@@ -20,16 +18,35 @@ export type Playstyle = {
 /** The most any card can hold (a gold one). */
 export const MAX_PLAYSTYLES = 4;
 
+/** The rating from which a card holds the full four PlayStyles+. */
+export const ELITE_RATING = 90;
+
 /**
- * How many PlayStyles+ a card can hold, by its colour: a bronze player
- * isn't good enough for four. The database enforces the same limits
- * (migration 0011).
+ * How many PlayStyles+ a card can hold, by its rating: bronze 1, silver 2,
+ * gold 3, and only a 90+ gold card all four. The database enforces the
+ * same limits (migrations 0011 and 0012).
  */
-export const PLAYSTYLE_LIMITS: Record<CardTier, number> = {
-  bronze: 1,
-  silver: 2,
-  gold: MAX_PLAYSTYLES,
-};
+export function playstyleLimit(overall: number): number {
+  if (overall >= ELITE_RATING) return MAX_PLAYSTYLES;
+  if (overall >= 75) return 3;
+  if (overall >= 65) return 2;
+  return 1;
+}
+
+/** Who holds that many, for messages: "Silver cards", "90+ cards". */
+export function limitHolder(overall: number): string {
+  if (overall >= ELITE_RATING) return `${ELITE_RATING}+ cards`;
+  if (overall >= 75) return "Gold cards";
+  if (overall >= 65) return "Silver cards";
+  return "Bronze cards";
+}
+
+/** What it takes to hold one more, or null at the top. */
+export function nextLimitHint(overall: number): string | null {
+  if (overall >= ELITE_RATING) return null;
+  if (overall >= 75) return `Reach ${ELITE_RATING} for ${MAX_PLAYSTYLES}.`;
+  return "Raise your rating for more.";
+}
 
 /** "1 PlayStyle+" / "2 PlayStyles+". */
 export function playstyleCount(n: number): string {

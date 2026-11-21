@@ -19,8 +19,8 @@ import {
 } from "../../src/components/ui";
 import { COUNTRIES, flagFor } from "../../src/constants/countries";
 import {
-  PLAYSTYLE_LIMITS,
   playstyleCount,
+  playstyleLimit,
 } from "../../src/constants/playstyles";
 import { POSITION_NAMES, type Position } from "../../src/constants/positions";
 import { confirmDialog, showAlert } from "../../src/lib/alert";
@@ -81,9 +81,12 @@ export default function MyCardScreen() {
   const isGk = draft.position === "GK";
   // The card's colour, which sets how many PlayStyles+ it can hold and the
   // colour of their badges.
-  const draftTier = tierFor(
-    overallFor({ ...draft.stats, ...draft.gkStats, position: draft.position }),
-  );
+  const draftOverall = overallFor({
+    ...draft.stats,
+    ...draft.gkStats,
+    position: draft.position,
+  });
+  const draftTier = tierFor(draftOverall);
   const patch = (changes: Partial<CardDraft>) =>
     setDraft((d) => ({ ...d, ...changes }));
 
@@ -130,11 +133,11 @@ export default function MyCardScreen() {
   );
 
   const save = async () => {
-    const limit = PLAYSTYLE_LIMITS[draftTier];
+    const limit = playstyleLimit(draftOverall);
     if (draft.playstyles.length > limit) {
       showAlert(
         "Too many PlayStyles+",
-        `A ${draftTier} card holds ${playstyleCount(limit)}. Remove ${
+        `A ${draftOverall}-rated card holds ${playstyleCount(limit)}. Remove ${
           draft.playstyles.length - limit
         } under PlayStyles+ to save, or raise your rating.`,
       );
@@ -323,6 +326,7 @@ export default function MyCardScreen() {
                 selected={draft.playstyles}
                 onChange={(playstyles) => patch({ playstyles })}
                 tier={draftTier}
+                overall={draftOverall}
               />
             </Card>
 
