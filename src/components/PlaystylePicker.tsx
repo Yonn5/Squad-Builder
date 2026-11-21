@@ -39,7 +39,6 @@ export function PlaystylePicker({
 
   const limit = playstyleLimit(overall);
   const full = selected.length >= limit;
-  const over = selected.length - limit;
   const holder = limitHolder(overall);
   const hint = nextLimitHint(overall);
 
@@ -49,12 +48,7 @@ export function PlaystylePicker({
         {selected.length}/{limit} selected · {holder} hold{" "}
         {playstyleCount(limit)}.{hint ? ` ${hint}` : ""}
       </Text>
-      {over > 0 ? (
-        <Text style={styles.over}>
-          At {overall} your card holds {playstyleCount(limit)}. Remove {over}{" "}
-          to save.
-        </Text>
-      ) : null}
+
       {PLAYSTYLE_CATEGORIES.map((category) => (
         <View key={category}>
           <Text style={[styles.category, { color: categoryColors[category] }]}>
@@ -92,7 +86,6 @@ export function PlaystylePicker({
 
 const styles = StyleSheet.create({
   counter: { color: colors.textMuted, fontWeight: "600", lineHeight: 19 },
-  over: { color: colors.danger, fontWeight: "700", lineHeight: 19 },
   category: {
     fontWeight: "800",
     fontSize: 13,
