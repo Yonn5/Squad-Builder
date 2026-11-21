@@ -25,6 +25,7 @@ import {
   isCutOutUrl,
   uploadPlayerPhoto,
 } from "../../src/lib/photoStorage";
+import { fetchPlayerRecord } from "../../src/lib/playerRecord";
 import { supabase } from "../../src/lib/supabase";
 import {
   GK_STAT_KEYS,
@@ -105,33 +106,8 @@ export default function MyCardScreen() {
       setSaved(next);
     }
 
-    const { data: rows } = await supabase
-      .from("match_player_stats")
-      .select(
-        "goals, assists, motm, team_id, matches!inner(status, home_team_id, home_score, away_score)",
-      )
-      .eq("player_id", userId)
-      .eq("matches.status", "completed");
-    if (rows) {
-      const rec: PlayerRecord = {
-        apps: 0, goals: 0, assists: 0, motm: 0, wins: 0, draws: 0, losses: 0,
-      };
-      for (const row of rows as any[]) {
-        const match = row.matches;
-        if (match.home_score == null || match.away_score == null) continue;
-        rec.apps += 1;
-        rec.goals += row.goals;
-        rec.assists += row.assists;
-        if (row.motm) rec.motm += 1;
-        const isHome = row.team_id === match.home_team_id;
-        const my = isHome ? match.home_score : match.away_score;
-        const their = isHome ? match.away_score : match.home_score;
-        if (my > their) rec.wins += 1;
-        else if (my === their) rec.draws += 1;
-        else rec.losses += 1;
-      }
-      setRecord(rec);
-    }
+    const rec = await fetchPlayerRecord(userId);
+    if (rec) setRecord(rec);
     setLoaded(true);
   }, [userId]);
 

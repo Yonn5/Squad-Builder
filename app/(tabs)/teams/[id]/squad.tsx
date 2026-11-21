@@ -14,29 +14,33 @@ import {
   Loading,
   SectionTitle,
 } from "../../../../src/components/ui";
-import { confirmDialog, showAlert } from "../../../../src/lib/alert";
 import { supabase, TEAM_COLUMNS } from "../../../../src/lib/supabase";
 import { overallFor, tierFor } from "../../../../src/logic/overall";
-import { useUserId } from "../../../../src/providers/AuthProvider";
 import { colors, tierColors } from "../../../../src/theme";
 import type { Profile, Team } from "../../../../src/types";
 
-/** Everyone in the team. The captain can kick players from here. */
+/** Everyone in the team; tap a player to see their card. */
 export default function SquadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const userId = useUserId();
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
-  const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<"missing" | "failed" | null>(null);
 
   const load = useCallback(async () => {
     const [teamRes, membersRes] = await Promise.all([
-      supabase.from("teams").select(TEAM_COLUMNS).eq("id", id).maybeSingle<Team>(),
+      supabase
+        .from("teams")
+        .select(TEAM_COLUMNS)
+        .eq("id", id)
+        .maybeSingle<Team>(),
       supabase.from("team_members").select("profiles(*)").eq("team_id", id),
     ]);
     setProblem(
-      teamRes.error || membersRes.error ? "failed" : teamRes.data ? null : "missing",
+      teamRes.error || membersRes.error
+        ? "failed"
+        : teamRes.data
+          ? null
+          : "missing",
     );
     setTeam(teamRes.data);
     setMembers(
@@ -60,38 +64,20 @@ export default function SquadScreen() {
               : "Couldn't load the squad. Check your connection and try again."
           }
         />
-        <Button title="Back to Teams" onPress={() => router.replace("/teams")} />
+        <Button
+          title="Back to Teams"
+          onPress={() => router.replace("/teams")}
+        />
       </View>
     );
   }
   if (!team) return <Loading />;
 
-  const isCaptain = team.captain_id === userId;
   // Captain first; everyone else in the order they joined.
   const ordered = [
     ...members.filter((m) => m.id === team.captain_id),
     ...members.filter((m) => m.id !== team.captain_id),
   ];
-
-  const kick = async (member: Profile) => {
-    if (
-      !(await confirmDialog(
-        "Kick player",
-        `Kick ${member.username} out of ${team.name}? Their card and career stats are not affected.`,
-        "Kick",
-      ))
-    )
-      return;
-    setBusy(true);
-    const { error } = await supabase
-      .from("team_members")
-      .delete()
-      .eq("team_id", team.id)
-      .eq("user_id", member.id);
-    setBusy(false);
-    if (error) showAlert("Could not kick player", error.message);
-    else load();
-  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -101,31 +87,34 @@ export default function SquadScreen() {
         const overall = overallFor(member);
         const tier = tierColors[tierFor(overall)];
         return (
-          <Card key={member.id} style={styles.memberRow}>
-            <View style={[styles.ovrBadge, { backgroundColor: tier.gradient[1] }]}>
-              <Text style={[styles.ovrText, { color: tier.text }]}>{overall}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.memberName}>
-                {member.username}
-                {member.id === team.captain_id ? "  ©" : ""}
-              </Text>
-              <Text style={styles.memberPos}>{member.position}</Text>
-            </View>
-            <Text style={styles.memberStyles}>
-              {member.playstyles.length} PS+
-            </Text>
-            {isCaptain && member.id !== team.captain_id && (
-              <TouchableOpacity
-                onPress={() => kick(member)}
-                disabled={busy}
-                hitSlop={10}
-                style={styles.kickBtn}
+          <TouchableOpacity
+            key={member.id}
+            onPress={() =>
+              router.push(`/teams/${team.id}/players/${member.id}`)
+            }
+            accessibilityRole="button"
+          >
+            <Card style={styles.memberRow}>
+              <View
+                style={[styles.ovrBadge, { backgroundColor: tier.gradient[1] }]}
               >
-                <Text style={styles.kickText}>Kick</Text>
-              </TouchableOpacity>
-            )}
-          </Card>
+                <Text style={[styles.ovrText, { color: tier.text }]}>
+                  {overall}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.memberName}>
+                  {member.username}
+                  {member.id === team.captain_id ? "  ©" : ""}
+                </Text>
+                <Text style={styles.memberPos}>{member.position}</Text>
+              </View>
+              <Text style={styles.memberStyles}>
+                {member.playstyles.length} PS+
+              </Text>
+              <Text style={styles.chev}>›</Text>
+            </Card>
+          </TouchableOpacity>
         );
       })}
     </ScrollView>
@@ -149,12 +138,5 @@ const styles = StyleSheet.create({
   memberName: { color: colors.text, fontWeight: "700", fontSize: 15 },
   memberPos: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
   memberStyles: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  kickBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.danger,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  kickText: { color: colors.danger, fontSize: 12, fontWeight: "700" },
+  chev: { color: colors.textMuted, fontSize: 24 },
 });
