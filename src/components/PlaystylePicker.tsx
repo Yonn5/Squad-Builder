@@ -3,9 +3,6 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   PLAYSTYLES_BY_CATEGORY,
   PLAYSTYLE_CATEGORIES,
-  limitHolder,
-  nextLimitHint,
-  playstyleCount,
   playstyleLimit,
 } from "../constants/playstyles";
 import type { CardTier } from "../logic/overall";
@@ -39,15 +36,9 @@ export function PlaystylePicker({
 
   const limit = playstyleLimit(overall);
   const full = selected.length >= limit;
-  const holder = limitHolder(overall);
-  const hint = nextLimitHint(overall);
 
   return (
     <View style={{ gap: 14 }}>
-      <Text style={styles.counter} testID="playstyle-counter">
-        {selected.length}/{limit} selected · {holder} hold{" "}
-        {playstyleCount(limit)}.{hint ? ` ${hint}` : ""}
-      </Text>
 
       {PLAYSTYLE_CATEGORIES.map((category) => (
         <View key={category}>
@@ -85,7 +76,6 @@ export function PlaystylePicker({
 }
 
 const styles = StyleSheet.create({
-  counter: { color: colors.textMuted, fontWeight: "600", lineHeight: 19 },
   category: {
     fontWeight: "800",
     fontSize: 13,

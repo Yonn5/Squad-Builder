@@ -33,21 +33,6 @@ export function playstyleLimit(overall: number): number {
   return 1;
 }
 
-/** Who holds that many, for messages: "Silver cards", "90+ cards". */
-export function limitHolder(overall: number): string {
-  if (overall >= ELITE_RATING) return `${ELITE_RATING}+ cards`;
-  if (overall >= 75) return "Gold cards";
-  if (overall >= 65) return "Silver cards";
-  return "Bronze cards";
-}
-
-/** What it takes to hold one more, or null at the top. */
-export function nextLimitHint(overall: number): string | null {
-  if (overall >= ELITE_RATING) return null;
-  if (overall >= 75) return `Reach ${ELITE_RATING} for ${MAX_PLAYSTYLES}.`;
-  return "Raise your rating for more.";
-}
-
 /** "1 PlayStyle+" / "2 PlayStyles+". */
 export function playstyleCount(n: number): string {
   return `${n} PlayStyle${n === 1 ? "+" : "s+"}`;
