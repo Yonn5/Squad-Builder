@@ -1,7 +1,7 @@
 import type { Position } from "./positions";
 
 /** Players per side, keeper included. */
-export const MATCH_SIZES = [6, 9, 10, 11] as const;
+export const MATCH_SIZES = [6, 7, 8, 9, 10, 11] as const;
 export type MatchSize = (typeof MATCH_SIZES)[number];
 
 export type FormationSlot = {
@@ -71,6 +71,124 @@ export const FORMATIONS: Formation[] = [
       { position: "CM", x: 68, y: 48 },
       { position: "ST", x: 32, y: 22 },
       { position: "ST", x: 68, y: 22 },
+    ],
+  },
+  // ---------- 7v7 (GK + 6) ----------
+  {
+    key: "7v7-2-3-1",
+    label: "2-3-1",
+    size: 7,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 34, y: 74 },
+      { position: "CB", x: 66, y: 74 },
+      { position: "LM", x: 18, y: 48 },
+      { position: "CM", x: 50, y: 50 },
+      { position: "RM", x: 82, y: 48 },
+      { position: "ST", x: 50, y: 20 },
+    ],
+  },
+  {
+    key: "7v7-3-2-1",
+    label: "3-2-1",
+    size: 7,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "CM", x: 34, y: 50 },
+      { position: "CM", x: 66, y: 50 },
+      { position: "ST", x: 50, y: 20 },
+    ],
+  },
+  {
+    key: "7v7-3-1-2",
+    label: "3-1-2",
+    size: 7,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "CM", x: 50, y: 50 },
+      { position: "ST", x: 34, y: 21 },
+      { position: "ST", x: 66, y: 21 },
+    ],
+  },
+  {
+    key: "7v7-2-2-2",
+    label: "2-2-2",
+    size: 7,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 34, y: 74 },
+      { position: "CB", x: 66, y: 74 },
+      { position: "CM", x: 34, y: 50 },
+      { position: "CM", x: 66, y: 50 },
+      { position: "ST", x: 34, y: 21 },
+      { position: "ST", x: 66, y: 21 },
+    ],
+  },
+  // ---------- 8v8 (GK + 7) ----------
+  {
+    key: "8v8-3-3-1",
+    label: "3-3-1",
+    size: 8,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "LM", x: 18, y: 48 },
+      { position: "CM", x: 50, y: 50 },
+      { position: "RM", x: 82, y: 48 },
+      { position: "ST", x: 50, y: 20 },
+    ],
+  },
+  {
+    key: "8v8-3-2-2",
+    label: "3-2-2",
+    size: 8,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 24, y: 74 },
+      { position: "CB", x: 50, y: 76 },
+      { position: "CB", x: 76, y: 74 },
+      { position: "CM", x: 34, y: 50 },
+      { position: "CM", x: 66, y: 50 },
+      { position: "ST", x: 34, y: 21 },
+      { position: "ST", x: 66, y: 21 },
+    ],
+  },
+  {
+    key: "8v8-2-3-2",
+    label: "2-3-2",
+    size: 8,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 34, y: 74 },
+      { position: "CB", x: 66, y: 74 },
+      { position: "LM", x: 18, y: 48 },
+      { position: "CM", x: 50, y: 50 },
+      { position: "RM", x: 82, y: 48 },
+      { position: "ST", x: 34, y: 21 },
+      { position: "ST", x: 66, y: 21 },
+    ],
+  },
+  {
+    key: "8v8-2-4-1",
+    label: "2-4-1",
+    size: 8,
+    slots: [
+      { position: "GK", x: 50, y: 92 },
+      { position: "CB", x: 34, y: 74 },
+      { position: "CB", x: 66, y: 74 },
+      { position: "LM", x: 12, y: 46 },
+      { position: "CM", x: 38, y: 50 },
+      { position: "CM", x: 62, y: 50 },
+      { position: "RM", x: 88, y: 46 },
+      { position: "ST", x: 50, y: 20 },
     ],
   },
   // ---------- 10v10 (GK + 9) ----------

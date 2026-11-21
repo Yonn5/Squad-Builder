@@ -41,7 +41,32 @@ export function cardWidthFor(formation: Formation, pitchWidth: number): number {
       width = Math.min(width, Math.max(dx, dy / CARD_RATIO) * CARD_GAP);
     }
   }
-  return Math.max(CARD_MIN, Math.floor(width));
+  // Cards near the goal lines are nudged inwards to stay on the pitch
+  // (cardTopLeft), which can push a big keeper card into the defence: shrink
+  // until the cards as actually placed clear each other.
+  let size = Math.max(CARD_MIN, Math.floor(width));
+  while (size > CARD_MIN && placedOverlap(formation, pitchWidth, size)) size--;
+  return size;
+}
+
+function placedOverlap(
+  formation: Formation,
+  pitchWidth: number,
+  cardWidth: number,
+): boolean {
+  const boxes = formation.slots.map((slot) =>
+    cardTopLeft(slot, pitchWidth, cardWidth),
+  );
+  const h = cardWidth * CARD_RATIO;
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i];
+      const b = boxes[j];
+      if (Math.abs(a.left - b.left) < cardWidth && Math.abs(a.top - b.top) < h)
+        return true;
+    }
+  }
+  return false;
 }
 
 /**
