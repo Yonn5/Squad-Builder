@@ -87,6 +87,14 @@ export default function MyCardScreen() {
     position: draft.position,
   });
   const draftTier = tierFor(draftOverall);
+  const extraPlaystyles = draft.playstyles.length - playstyleLimit(draftOverall);
+  // Why Save Card is greyed out, if it is.
+  const saveBlocker =
+    draft.username.trim().length < 2
+      ? "Your player name needs at least 2 characters."
+      : extraPlaystyles > 0
+        ? `Remove ${playstyleCount(extraPlaystyles)} to save: at ${draftOverall} your card holds ${playstyleCount(playstyleLimit(draftOverall))}.`
+        : null;
   const patch = (changes: Partial<CardDraft>) =>
     setDraft((d) => ({ ...d, ...changes }));
 
@@ -133,16 +141,8 @@ export default function MyCardScreen() {
   );
 
   const save = async () => {
-    const limit = playstyleLimit(draftOverall);
-    if (draft.playstyles.length > limit) {
-      showAlert(
-        "Too many PlayStyles+",
-        `A ${draftOverall}-rated card holds ${playstyleCount(limit)}. Remove ${
-          draft.playstyles.length - limit
-        } under PlayStyles+ to save, or raise your rating.`,
-      );
-      return;
-    }
+    // The button is disabled while this is so; this only guards a stray call.
+    if (saveBlocker) return;
     setBusy(true);
 
     // A photo picked in this session still only exists on the device, so it
@@ -330,11 +330,16 @@ export default function MyCardScreen() {
               />
             </Card>
 
+            {saveBlocker ? (
+              <Text style={styles.blocker} testID="save-blocker">
+                {saveBlocker}
+              </Text>
+            ) : null}
             <Button
               title="Save Card"
               onPress={save}
               loading={busy}
-              disabled={draft.username.trim().length < 2}
+              disabled={saveBlocker !== null}
             />
             <Button title="Cancel" onPress={cancel} variant="secondary" />
           </>
@@ -469,4 +474,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   empty: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
+  blocker: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 19,
+    textAlign: "center",
+  },
 });

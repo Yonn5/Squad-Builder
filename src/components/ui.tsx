@@ -30,13 +30,21 @@ export function Button({
   style?: ViewStyle;
   testID?: string;
 }) {
-  const bg =
-    variant === "primary"
+  // Disabled buttons turn grey whatever their colour, so they read as
+  // unavailable rather than just a little faded.
+  const greyed = disabled && !loading;
+  const bg = greyed
+    ? colors.surfaceAlt
+    : variant === "primary"
       ? colors.accent
       : variant === "danger"
         ? colors.danger
         : colors.surfaceAlt;
-  const fg = variant === "primary" ? "#08351d" : colors.text;
+  const fg = greyed
+    ? colors.textMuted
+    : variant === "primary"
+      ? "#08351d"
+      : colors.text;
   return (
     <TouchableOpacity
       testID={testID}
@@ -44,7 +52,7 @@ export function Button({
       disabled={disabled || loading}
       style={[
         styles.button,
-        { backgroundColor: bg, opacity: disabled || loading ? 0.5 : 1 },
+        { backgroundColor: bg, opacity: greyed ? 0.6 : loading ? 0.5 : 1 },
         style,
       ]}
     >
