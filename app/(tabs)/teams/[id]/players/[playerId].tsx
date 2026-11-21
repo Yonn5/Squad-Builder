@@ -16,6 +16,7 @@ import { confirmDialog, showAlert } from "../../../../../src/lib/alert";
 import { isCutOutUrl } from "../../../../../src/lib/photoStorage";
 import { fetchPlayerRecord } from "../../../../../src/lib/playerRecord";
 import { supabase, TEAM_COLUMNS } from "../../../../../src/lib/supabase";
+import { overallFor, tierFor } from "../../../../../src/logic/overall";
 import { useUserId } from "../../../../../src/providers/AuthProvider";
 import { colors } from "../../../../../src/theme";
 import type { PlayerRecord, Profile, Team } from "../../../../../src/types";
@@ -157,7 +158,11 @@ export default function PlayerScreen() {
           <View style={styles.playstyles}>
             {player.playstyles.map((name) => (
               <View key={name} style={styles.playstyle}>
-                <PlaystyleBadge name={name} size={26} />
+                <PlaystyleBadge
+                  name={name}
+                  size={26}
+                  tier={tierFor(overallFor({ ...player, ...gkStats }))}
+                />
                 <Text style={styles.playstyleName}>{name}</Text>
               </View>
             ))}

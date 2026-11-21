@@ -154,7 +154,7 @@ export function PlayerCard({
         ]}
       >
         {playstyles.slice(0, 4).map((p) => (
-          <PlaystyleBadge key={p} name={p} size={32 * s} />
+          <PlaystyleBadge key={p} name={p} size={32 * s} tier={tierFor(overall)} />
         ))}
       </View>
 

@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Loading } from "../src/components/ui";
-import { ICON_IMAGES } from "../src/constants/playstyleIcons";
+import { ALL_ICON_IMAGES } from "../src/constants/playstyleIcons";
 import { silenceHandledNetworkLogs } from "../src/lib/quietNetworkLogs";
 import { applyWebViewportFixes } from "../src/lib/webViewport";
 import { AuthProvider, useAuth } from "../src/providers/AuthProvider";
@@ -62,7 +62,7 @@ export default function RootLayout() {
   // first display, so badges can pop in seconds after a card renders. Warm
   // them once at startup so they are cached before any card is shown.
   useEffect(() => {
-    Asset.loadAsync(Object.values(ICON_IMAGES) as number[]).catch(() => {});
+    Asset.loadAsync(ALL_ICON_IMAGES as number[]).catch(() => {});
     applyWebViewportFixes();
   }, []);
 

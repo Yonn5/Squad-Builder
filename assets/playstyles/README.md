@@ -21,3 +21,13 @@ Goalkeeper:    far-throw.png footwork.png cross-claimer.png rush-out.png
 When adding a NEW playstyle: add the PNG here, an entry in
 `src/constants/playstyles.ts`, and a `require` in
 `src/constants/playstyleIcons.ts`.
+
+## Silver and bronze
+
+`silver/` and `bronze/` hold recoloured copies of every badge, used on
+silver and bronze cards so the badges match the card. They are generated
+from the gold files above; after replacing a gold icon, rebuild them with:
+
+```
+node scripts/recolor-playstyles.js
+```

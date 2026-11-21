@@ -33,6 +33,8 @@ import {
   GK_STAT_NAMES,
   STAT_KEYS,
   STAT_LABELS,
+  overallFor,
+  tierFor,
 } from "../../src/logic/overall";
 import { useUserId } from "../../src/providers/AuthProvider";
 import { colors } from "../../src/theme";
@@ -208,6 +210,10 @@ export default function MyCardScreen() {
   }
 
   const flag = flagFor(draft.nationality);
+  // The card's colour, so the PlayStyle+ badges around the screen match it.
+  const tier = tierFor(
+    overallFor({ ...draft.stats, ...draft.gkStats, position: draft.position }),
+  );
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -301,6 +307,7 @@ export default function MyCardScreen() {
               <PlaystylePicker
                 selected={draft.playstyles}
                 onChange={(playstyles) => patch({ playstyles })}
+                tier={tier}
               />
             </Card>
 
@@ -334,7 +341,7 @@ export default function MyCardScreen() {
                   <Text style={styles.summaryLabel}>PlayStyles+</Text>
                   <View style={styles.badgeRow}>
                     {draft.playstyles.map((p) => (
-                      <PlaystyleBadge key={p} name={p} size={26} />
+                      <PlaystyleBadge key={p} name={p} size={26} tier={tier} />
                     ))}
                   </View>
                 </View>

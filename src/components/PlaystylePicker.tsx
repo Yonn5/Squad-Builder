@@ -5,6 +5,7 @@ import {
   PLAYSTYLES_BY_CATEGORY,
   PLAYSTYLE_CATEGORIES,
 } from "../constants/playstyles";
+import type { CardTier } from "../logic/overall";
 import { categoryColors, colors } from "../theme";
 import { PlaystyleBadge } from "./PlaystyleBadge";
 
@@ -14,9 +15,12 @@ import { PlaystyleBadge } from "./PlaystyleBadge";
 export function PlaystylePicker({
   selected,
   onChange,
+  tier = "gold",
 }: {
   selected: string[];
   onChange: (next: string[]) => void;
+  /** Colour the badges like the card they will sit on. */
+  tier?: CardTier;
 }) {
   const toggle = (name: string) => {
     if (selected.includes(name)) {
@@ -56,7 +60,7 @@ export function PlaystylePicker({
                     disabled && { opacity: 0.35 },
                   ]}
                 >
-                  <PlaystyleBadge name={style.name} size={22} />
+                  <PlaystyleBadge name={style.name} size={22} tier={tier} />
                   <Text style={styles.chipText}>{style.name}</Text>
                 </TouchableOpacity>
               );
