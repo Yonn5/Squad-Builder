@@ -7,6 +7,8 @@ export const PLAYSTYLE_CATEGORIES = [
   "Goalkeeper",
 ] as const;
 
+import type { CardTier } from "../logic/overall";
+
 export type PlaystyleCategory = (typeof PLAYSTYLE_CATEGORIES)[number];
 
 export type Playstyle = {
@@ -15,7 +17,24 @@ export type Playstyle = {
   description: string;
 };
 
+/** The most any card can hold (a gold one). */
 export const MAX_PLAYSTYLES = 4;
+
+/**
+ * How many PlayStyles+ a card can hold, by its colour: a bronze player
+ * isn't good enough for four. The database enforces the same limits
+ * (migration 0011).
+ */
+export const PLAYSTYLE_LIMITS: Record<CardTier, number> = {
+  bronze: 1,
+  silver: 2,
+  gold: MAX_PLAYSTYLES,
+};
+
+/** "1 PlayStyle+" / "2 PlayStyles+". */
+export function playstyleCount(n: number): string {
+  return `${n} PlayStyle${n === 1 ? "+" : "s+"}`;
+}
 
 /** 36 PlayStyles+ across 6 categories (matches the icon set in assets/playstyles). */
 export const PLAYSTYLES: Playstyle[] = [

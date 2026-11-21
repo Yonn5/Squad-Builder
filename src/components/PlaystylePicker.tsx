@@ -1,16 +1,18 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
-  MAX_PLAYSTYLES,
+  PLAYSTYLE_LIMITS,
   PLAYSTYLES_BY_CATEGORY,
   PLAYSTYLE_CATEGORIES,
+  playstyleCount,
 } from "../constants/playstyles";
 import type { CardTier } from "../logic/overall";
 import { categoryColors, colors } from "../theme";
 import { PlaystyleBadge } from "./PlaystyleBadge";
 
 /**
- * Category-grouped PlayStyle+ selector; enforces the 4-style cap.
+ * Category-grouped PlayStyle+ selector. How many can be picked depends on
+ * the card's colour: bronze 1, silver 2, gold 4.
  */
 export function PlaystylePicker({
   selected,
@@ -25,18 +27,29 @@ export function PlaystylePicker({
   const toggle = (name: string) => {
     if (selected.includes(name)) {
       onChange(selected.filter((s) => s !== name));
-    } else if (selected.length < MAX_PLAYSTYLES) {
+    } else if (selected.length < limit) {
       onChange([...selected, name]);
     }
   };
 
-  const full = selected.length >= MAX_PLAYSTYLES;
+  const limit = PLAYSTYLE_LIMITS[tier];
+  const full = selected.length >= limit;
+  const over = selected.length - limit;
+  const tierName = tier[0].toUpperCase() + tier.slice(1);
 
   return (
     <View style={{ gap: 14 }}>
-      <Text style={styles.counter}>
-        {selected.length}/{MAX_PLAYSTYLES} selected
+      <Text style={styles.counter} testID="playstyle-counter">
+        {selected.length}/{limit} selected · {tierName} cards hold{" "}
+        {playstyleCount(limit)}
+        {tier !== "gold" ? ". Raise your rating for more." : ""}
       </Text>
+      {over > 0 ? (
+        <Text style={styles.over}>
+          Your card is {tierName} now, which holds {playstyleCount(limit)}.
+          Remove {over} to save.
+        </Text>
+      ) : null}
       {PLAYSTYLE_CATEGORIES.map((category) => (
         <View key={category}>
           <Text style={[styles.category, { color: categoryColors[category] }]}>
@@ -73,7 +86,8 @@ export function PlaystylePicker({
 }
 
 const styles = StyleSheet.create({
-  counter: { color: colors.textMuted, fontWeight: "600" },
+  counter: { color: colors.textMuted, fontWeight: "600", lineHeight: 19 },
+  over: { color: colors.danger, fontWeight: "700", lineHeight: 19 },
   category: {
     fontWeight: "800",
     fontSize: 13,

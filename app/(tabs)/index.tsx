@@ -18,6 +18,10 @@ import {
   SectionTitle,
 } from "../../src/components/ui";
 import { COUNTRIES, flagFor } from "../../src/constants/countries";
+import {
+  PLAYSTYLE_LIMITS,
+  playstyleCount,
+} from "../../src/constants/playstyles";
 import { POSITION_NAMES, type Position } from "../../src/constants/positions";
 import { confirmDialog, showAlert } from "../../src/lib/alert";
 import {
@@ -75,6 +79,11 @@ export default function MyCardScreen() {
   const [record, setRecord] = useState<PlayerRecord | null>(null);
 
   const isGk = draft.position === "GK";
+  // The card's colour, which sets how many PlayStyles+ it can hold and the
+  // colour of their badges.
+  const draftTier = tierFor(
+    overallFor({ ...draft.stats, ...draft.gkStats, position: draft.position }),
+  );
   const patch = (changes: Partial<CardDraft>) =>
     setDraft((d) => ({ ...d, ...changes }));
 
@@ -121,6 +130,16 @@ export default function MyCardScreen() {
   );
 
   const save = async () => {
+    const limit = PLAYSTYLE_LIMITS[draftTier];
+    if (draft.playstyles.length > limit) {
+      showAlert(
+        "Too many PlayStyles+",
+        `A ${draftTier} card holds ${playstyleCount(limit)}. Remove ${
+          draft.playstyles.length - limit
+        } under PlayStyles+ to save, or raise your rating.`,
+      );
+      return;
+    }
     setBusy(true);
 
     // A photo picked in this session still only exists on the device, so it
@@ -210,10 +229,6 @@ export default function MyCardScreen() {
   }
 
   const flag = flagFor(draft.nationality);
-  // The card's colour, so the PlayStyle+ badges around the screen match it.
-  const tier = tierFor(
-    overallFor({ ...draft.stats, ...draft.gkStats, position: draft.position }),
-  );
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -307,7 +322,7 @@ export default function MyCardScreen() {
               <PlaystylePicker
                 selected={draft.playstyles}
                 onChange={(playstyles) => patch({ playstyles })}
-                tier={tier}
+                tier={draftTier}
               />
             </Card>
 
@@ -341,7 +356,7 @@ export default function MyCardScreen() {
                   <Text style={styles.summaryLabel}>PlayStyles+</Text>
                   <View style={styles.badgeRow}>
                     {draft.playstyles.map((p) => (
-                      <PlaystyleBadge key={p} name={p} size={26} tier={tier} />
+                      <PlaystyleBadge key={p} name={p} size={26} tier={draftTier} />
                     ))}
                   </View>
                 </View>
