@@ -224,6 +224,34 @@ export function PlayerCard({
         </View>
       )}
 
+      {/* compact: the badges stacked and overlapping down the left edge */}
+      {compact && playstyles.length > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: width * (6 / 280) - (width * 0.28) / 2,
+            top: height * 0.33,
+          }}
+        >
+          {playstyles.slice(0, 4).map((p, i) => (
+            <View
+              key={p}
+              style={{
+                marginTop: i === 0 ? 0 : -width * 0.28 * 0.5,
+                zIndex: 4 - i,
+              }}
+            >
+              <PlaystyleBadge
+                name={p}
+                size={width * 0.28}
+                tier={tierFor(overall)}
+              />
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* name */}
       <View
         style={[styles.nameWrap, { top: height * (compact ? 0.58 : 0.575) }]}

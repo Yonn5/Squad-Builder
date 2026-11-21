@@ -1,10 +1,10 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { PitchView } from "../../../../../src/components/PitchView";
 import { Card, EmptyState, Loading, SectionTitle } from "../../../../../src/components/ui";
 import { getFormation } from "../../../../../src/constants/formations";
-import { confirmDialog, showAlert } from "../../../../../src/lib/alert";
+import { showAlert } from "../../../../../src/lib/alert";
 import { supabase, TEAM_COLUMNS } from "../../../../../src/lib/supabase";
 import { calcLineupChemistry } from "../../../../../src/logic/chemistry";
 import { useUserId } from "../../../../../src/providers/AuthProvider";
@@ -77,6 +77,14 @@ export default function LineupScreen() {
     };
   }, [load, lineupId]);
 
+  // Coming back from a player's details, where a slot may have been left or
+  // cleared: reload rather than wait for the live update.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
   const chemistry = useMemo(
     () => calcLineupChemistry(slots, profiles),
     [slots, profiles],
@@ -122,39 +130,13 @@ export default function LineupScreen() {
     load();
   };
 
-  const release = async (slot: LineupSlot) => {
-    const { error } = await supabase
-      .from("lineup_slots")
-      .update({ player_id: null })
-      .eq("id", slot.id);
-    if (error) showAlert("Could not update slot", error.message);
-    load();
-  };
-
-  const onSlotPress = async (slot: LineupSlot) => {
-    if (slot.player_id === userId) {
-      if (
-        await confirmDialog(
-          "Leave position?",
-          `Give up the ${slot.position} slot?`,
-          "Leave",
-        )
-      ) {
-        release(slot);
-      }
-    } else if (slot.player_id === null) {
+  // An open slot is claimed; a player's card opens their details, where
+  // they can leave their own slot and the captain can clear anyone's.
+  const onSlotPress = (slot: LineupSlot) => {
+    if (slot.player_id === null) {
       claim(slot);
-    } else if (isCaptain) {
-      const player = profiles[slot.player_id];
-      if (
-        await confirmDialog(
-          "Captain action",
-          `Remove ${player?.username ?? "player"} from ${slot.position}?`,
-          "Remove",
-        )
-      ) {
-        release(slot);
-      }
+    } else {
+      router.push(`/teams/${teamId}/players/${slot.player_id}?slot=${slot.id}`);
     }
   };
 
@@ -187,7 +169,11 @@ export default function LineupScreen() {
           PlayStyle categories.
         </Text>
         <Text style={styles.help}>
-          Tap an open slot to claim it{isCaptain ? ". As captain, tap a filled slot to clear it." : ", or your own slot to leave it."}
+          Tap an open slot to claim it, or a player's card to see their
+          details.{" "}
+          {isCaptain
+            ? "As captain you can clear a player's slot from there."
+            : "Leave your own slot from your card."}
         </Text>
       </Card>
     </ScrollView>

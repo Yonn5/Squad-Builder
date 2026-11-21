@@ -17,7 +17,7 @@ import { EmptyCard, PlayerCard } from "./PlayerCard";
  * Renders a formation on a pitch, own goal at the bottom. Every slot is a
  * card: the player's own card once someone has claimed it, otherwise an
  * empty card with the slot's position. Tapping a slot is handled by the
- * parent.
+ * parent: claiming an open one, or opening a player's details.
  */
 export function PitchView({
   formation,
@@ -93,7 +93,7 @@ export function PitchView({
                     gk_spd: player.gk_spd ?? 70,
                     gk_pos: player.gk_pos ?? 70,
                   }}
-                  playstyles={[]}
+                  playstyles={player.playstyles}
                   photoUri={player.photo_url}
                   photoCutOut={
                     player.photo_url ? isCutOutUrl(player.photo_url) : false

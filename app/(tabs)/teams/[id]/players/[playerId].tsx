@@ -26,18 +26,36 @@ import type { PlayerRecord, Profile, Team } from "../../../../../src/types";
  * The captain can kick the player from here.
  */
 export default function PlayerScreen() {
-  const { id, playerId } = useLocalSearchParams<{ id: string; playerId: string }>();
+  // `slot` is set when opened from a lineup: the slot this player holds.
+  const {
+    id,
+    playerId,
+    slot: slotId,
+  } = useLocalSearchParams<{
+    id: string;
+    playerId: string;
+    slot?: string;
+  }>();
   const userId = useUserId();
   const [team, setTeam] = useState<Team | null>(null);
   const [player, setPlayer] = useState<Profile | null>(null);
   const [record, setRecord] = useState<PlayerRecord | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slot, setSlot] = useState<{
+    id: string;
+    position: string;
+    lineup: string;
+  } | null>(null);
   // "gone": the player is no longer in this team (kicked or left).
   const [problem, setProblem] = useState<"gone" | "failed" | null>(null);
 
   const load = useCallback(async () => {
     const [teamRes, memberRes, rec] = await Promise.all([
-      supabase.from("teams").select(TEAM_COLUMNS).eq("id", id).maybeSingle<Team>(),
+      supabase
+        .from("teams")
+        .select(TEAM_COLUMNS)
+        .eq("id", id)
+        .maybeSingle<Team>(),
       supabase
         .from("team_members")
         .select("profiles(*)")
@@ -46,6 +64,29 @@ export default function PlayerScreen() {
         .maybeSingle(),
       fetchPlayerRecord(playerId),
     ]);
+    if (slotId) {
+      const { data } = await supabase
+        .from("lineup_slots")
+        .select("id, position, player_id, lineups(name)")
+        .eq("id", slotId)
+        .maybeSingle();
+      const row = data as {
+        id: string;
+        position: string;
+        player_id: string | null;
+        lineups: { name: string } | null;
+      } | null;
+      // Only while they still hold it: it may have been left or cleared since.
+      setSlot(
+        row && row.player_id === playerId
+          ? {
+              id: row.id,
+              position: row.position,
+              lineup: row.lineups?.name ?? "this lineup",
+            }
+          : null,
+      );
+    }
     if (teamRes.error || memberRes.error) {
       setProblem("failed");
       return;
@@ -59,7 +100,7 @@ export default function PlayerScreen() {
     setTeam(teamRes.data);
     setPlayer(profile);
     setRecord(rec);
-  }, [id, playerId]);
+  }, [id, playerId, slotId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -86,9 +127,34 @@ export default function PlayerScreen() {
   const isCaptain = team.captain_id === userId;
   const flag = flagFor(player.nationality ?? "");
   const gkStats = {
-    gk_div: player.gk_div ?? 70, gk_han: player.gk_han ?? 70,
-    gk_kic: player.gk_kic ?? 70, gk_ref: player.gk_ref ?? 70,
-    gk_spd: player.gk_spd ?? 70, gk_pos: player.gk_pos ?? 70,
+    gk_div: player.gk_div ?? 70,
+    gk_han: player.gk_han ?? 70,
+    gk_kic: player.gk_kic ?? 70,
+    gk_ref: player.gk_ref ?? 70,
+    gk_spd: player.gk_spd ?? 70,
+    gk_pos: player.gk_pos ?? 70,
+  };
+
+  const isMe = player.id === userId;
+
+  const freeSlot = async () => {
+    if (!slot) return;
+    const ok = await confirmDialog(
+      isMe ? "Leave position?" : "Captain action",
+      isMe
+        ? `Give up the ${slot.position} slot?`
+        : `Remove ${player.username} from ${slot.position}?`,
+      isMe ? "Leave" : "Remove",
+    );
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("lineup_slots")
+      .update({ player_id: null })
+      .eq("id", slot.id);
+    setBusy(false);
+    if (error) showAlert("Could not update slot", error.message);
+    else router.back();
   };
 
   const kick = async () => {
@@ -118,16 +184,41 @@ export default function PlayerScreen() {
           name={player.username}
           position={player.position}
           stats={{
-            pac: player.pac, sho: player.sho, pas: player.pas,
-            dri: player.dri, def: player.def, phy: player.phy,
+            pac: player.pac,
+            sho: player.sho,
+            pas: player.pas,
+            dri: player.dri,
+            def: player.def,
+            phy: player.phy,
           }}
           gkStats={gkStats}
           playstyles={player.playstyles}
           nationality={player.nationality ?? ""}
           photoUri={player.photo_url ?? undefined}
-          photoCutOut={player.photo_url ? isCutOutUrl(player.photo_url) : undefined}
+          photoCutOut={
+            player.photo_url ? isCutOutUrl(player.photo_url) : undefined
+          }
         />
       </View>
+
+      {slot ? (
+        <Card style={styles.section}>
+          <SectionTitle>Lineup</SectionTitle>
+          <Text style={styles.empty}>
+            Playing {slot.position} in {slot.lineup}.
+          </Text>
+          {isMe || isCaptain ? (
+            <Button
+              title={
+                isMe ? `Leave ${slot.position}` : `Remove from ${slot.position}`
+              }
+              onPress={freeSlot}
+              variant="secondary"
+              loading={busy}
+            />
+          ) : null}
+        </Card>
+      ) : null}
 
       <Card style={styles.section}>
         <View style={styles.summaryRow}>
@@ -188,7 +279,9 @@ export default function PlayerScreen() {
           </>
         ) : (
           <Text style={styles.empty}>
-            {record ? "No completed matches yet." : "Couldn't load the career record."}
+            {record
+              ? "No completed matches yet."
+              : "Couldn't load the career record."}
           </Text>
         )}
       </Card>
