@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { View } from "react-native";
+import { DialogHost } from "../src/components/DialogHost";
 import { Loading } from "../src/components/ui";
 import { ALL_ICON_IMAGES } from "../src/constants/playstyleIcons";
 import { silenceHandledNetworkLogs } from "../src/lib/quietNetworkLogs";
@@ -70,6 +71,7 @@ export default function RootLayout() {
     <AuthProvider>
       <StatusBar style="light" />
       <RootNavigator />
+      <DialogHost />
     </AuthProvider>
   );
 }

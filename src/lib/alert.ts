@@ -1,32 +1,95 @@
 import { Alert, Platform } from "react-native";
 
 /**
- * React Native's Alert is a silent no-op on web, so route feedback
- * through the browser's native dialogs there.
+ * Messages and confirmations, shown as the app's own pop-up (DialogHost,
+ * mounted once at the root) rather than the browser's or the phone's
+ * system dialog. Callers just call these two functions.
  */
-export function showAlert(title: string, message?: string) {
-  if (Platform.OS === "web") {
-    (globalThis as any).alert(message ? `${title}\n\n${message}` : title);
-  } else {
-    Alert.alert(title, message);
-  }
+export type DialogRequest = {
+  title: string;
+  message?: string;
+  /** "alert" has a single OK; "confirm" has Cancel and Confirm. */
+  kind: "alert" | "confirm";
+  /** Confirm is shown in red: deleting, kicking, leaving, removing. */
+  destructive: boolean;
+  resolve: (confirmed: boolean) => void;
+};
+
+let host: ((request: DialogRequest) => void) | null = null;
+const waiting: DialogRequest[] = [];
+
+/** Called by DialogHost when it mounts (and with null when it unmounts). */
+export function setDialogHost(next: ((request: DialogRequest) => void) | null) {
+  host = next;
+  if (host) while (waiting.length) host(waiting.shift()!);
 }
 
-/** Cross-platform OK/Cancel confirmation. Resolves true when confirmed. */
+function open(request: DialogRequest) {
+  if (host) host(request);
+  else if (waiting.length < 20) waiting.push(request);
+  else fallback(request);
+}
+
+/** Only if the app's own pop-up is not mounted (it always is in the app). */
+function fallback(request: DialogRequest) {
+  const text = request.message
+    ? `${request.title}\n\n${request.message}`
+    : request.title;
+  if (Platform.OS === "web") {
+    if (request.kind === "confirm")
+      request.resolve((globalThis as any).confirm(text) === true);
+    else {
+      (globalThis as any).alert(text);
+      request.resolve(true);
+    }
+    return;
+  }
+  Alert.alert(
+    request.title,
+    request.message,
+    request.kind === "confirm"
+      ? [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => request.resolve(false),
+          },
+          { text: "Confirm", onPress: () => request.resolve(true) },
+        ]
+      : [{ text: "OK", onPress: () => request.resolve(true) }],
+  );
+}
+
+/** A message with a single OK button. */
+export function showAlert(title: string, message?: string) {
+  open({
+    title,
+    message,
+    kind: "alert",
+    destructive: false,
+    resolve: () => {},
+  });
+}
+
+const DESTRUCTIVE = /^(delete|kick|leave|remove|reset)/i;
+
+/**
+ * A Cancel / Confirm question. Resolves true when confirmed.
+ * `action` names what Confirm does ("Delete", "Kick", ...); destructive
+ * actions get a red Confirm button.
+ */
 export function confirmDialog(
   title: string,
   message: string,
-  confirmLabel = "OK",
+  action = "OK",
 ): Promise<boolean> {
-  if (Platform.OS === "web") {
-    return Promise.resolve(
-      (globalThis as any).confirm(`${title}\n\n${message}`) === true,
-    );
-  }
-  return new Promise((resolve) => {
-    Alert.alert(title, message, [
-      { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-      { text: confirmLabel, style: "destructive", onPress: () => resolve(true) },
-    ]);
-  });
+  return new Promise((resolve) =>
+    open({
+      title,
+      message,
+      kind: "confirm",
+      destructive: DESTRUCTIVE.test(action),
+      resolve,
+    }),
+  );
 }
