@@ -2,22 +2,28 @@ import * as Linking from "expo-linking";
 import { Platform } from "react-native";
 
 /**
- * Where the reset email sends people back to:
- *   web:       http(s)://<this site>/reset-password
- *   Expo Go:   exp://<computer's address>:8081/--/reset-password
- *   app build: squadbuilder://reset-password
+ * Where the link in a sign-in email sends people back to (typing the code
+ * is the main way in; the link is a shortcut on the same device):
+ *   web:       http(s)://<this site>/
+ *   Expo Go:   exp://<computer's address>:8081/--/
+ *   app build: squadbuilder://
  * Each one has to be listed under Supabase → Authentication → URL
  * Configuration → Redirect URLs, or Supabase sends people to the Site URL
  * instead.
  */
-export function resetPasswordRedirect(): string {
-  return Linking.createURL("/reset-password");
+export function signInRedirect(): string {
+  // On the web createURL drops the trailing slash, and the allow-list entry
+  // "http://localhost:8081/**" only matches with it.
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return `${window.location.origin}/`;
+  }
+  return Linking.createURL("/");
 }
 
 export type AuthLink = {
   accessToken?: string;
   refreshToken?: string;
-  /** "recovery" for a password reset. */
+  /** "magiclink" or "signup". */
   type?: string;
   /** Present instead of tokens when the link was expired or already used. */
   errorCode?: string;
@@ -53,11 +59,11 @@ export function parseAuthLink(url: string | null | undefined): AuthLink | null {
 /** One line for a link that could not be used. */
 export function describeLinkError(link: AuthLink): string {
   if (link.errorCode === "otp_expired") {
-    return "This reset link has expired or was already used. Send yourself a new one.";
+    return "That sign-in link has expired or was already used. Ask for a new code.";
   }
   return link.errorDescription
-    ? `${link.errorDescription.replace(/\+/g, " ")}. Send yourself a new link.`
-    : "This link could not be used. Send yourself a new one.";
+    ? `${link.errorDescription.replace(/\+/g, " ")}. Ask for a new code.`
+    : "That sign-in link could not be used. Ask for a new code.";
 }
 
 /** The link that opened the app (web: the page address). */

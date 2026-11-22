@@ -2,31 +2,35 @@ import { Link } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CodeEntry } from "../../src/components/CodeEntry";
 import {
   Button,
   Input,
   KeyboardAwareScroll,
   Label,
 } from "../../src/components/ui";
-import { describeAuthError } from "../../src/lib/authErrors";
-import { supabase } from "../../src/lib/supabase";
+import { EMAIL, sendCode } from "../../src/lib/emailCode";
 import { colors } from "../../src/theme";
 
+/** Sign in with a code emailed to you; there are no passwords. */
 export default function SignIn() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const signIn = async () => {
+  const send = async () => {
+    const address = email.trim();
+    if (!EMAIL.test(address)) {
+      setError("Enter the email address you signed up with.");
+      return;
+    }
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const problem = await sendCode(address);
     setLoading(false);
-    if (error) setError(describeAuthError(error));
+    if (problem) setError(problem);
+    else setSentTo(address);
   };
 
   return (
@@ -34,43 +38,39 @@ export default function SignIn() {
       <KeyboardAwareScroll centered contentContainerStyle={styles.form}>
         <Text style={styles.title}>Squad Builder</Text>
         <Text style={styles.subtitle}>Build your card. Claim your spot.</Text>
-        <Label>Email</Label>
-        <Input
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            setError(null);
-          }}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          placeholder="you@example.com"
-        />
-        <Label>Password</Label>
-        <Input
-          value={password}
-          onChangeText={(text) => {
-            setPassword(text);
-            setError(null);
-          }}
-          secureTextEntry
-          placeholder="••••••••"
-        />
-        <Link
-          href={{
-            pathname: "/forgot-password",
-            params: email.trim() ? { email: email.trim() } : {},
-          }}
-          style={styles.forgot}
-        >
-          Forgot password?
-        </Link>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button
-          title="Sign In"
-          onPress={signIn}
-          loading={loading}
-          disabled={!email || !password}
-        />
+        {sentTo ? (
+          <CodeEntry
+            email={sentTo}
+            verifyLabel="Sign In"
+            onResend={() => sendCode(sentTo)}
+            onChangeEmail={() => setSentTo(null)}
+          />
+        ) : (
+          <>
+            <Label>Email</Label>
+            <Input
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                setError(null);
+              }}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Button
+              title="Send Code"
+              onPress={send}
+              loading={loading}
+              disabled={!email.trim()}
+            />
+            <Text style={styles.hint}>
+              We'll email you a code to sign in. No password needed.
+            </Text>
+          </>
+        )}
         <Link href="/sign-up" style={styles.link}>
           New here? Create an account
         </Link>
@@ -93,17 +93,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
+  hint: { color: colors.textMuted, fontSize: 13, textAlign: "center" },
   error: {
     color: colors.danger,
     fontSize: 13,
     fontWeight: "600",
     lineHeight: 18,
-  },
-  forgot: {
-    color: colors.accent,
-    alignSelf: "flex-end",
-    fontSize: 13,
-    fontWeight: "600",
   },
   link: {
     color: colors.accent,

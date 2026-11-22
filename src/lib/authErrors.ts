@@ -38,8 +38,9 @@ export function describeAuthError(error: unknown): string {
       case "signup_disabled":
         return "New accounts are turned off for this app.";
       case "over_request_rate_limit":
-      case "over_email_send_rate_limit":
         return "Too many attempts. Wait a minute and try again.";
+      case "over_email_send_rate_limit":
+        return "A code was sent very recently. Wait a minute, then ask for a new one.";
     }
 
     // Projects on older Auth versions answer without a code.

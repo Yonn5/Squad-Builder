@@ -26,8 +26,8 @@ with your friends.
   3-2-3, 4-3-1, 3-4-1), 10v10 (4-3-2, 4-2-3, 3-4-2, 3-3-3, 4-4-1) or 11v11
   (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2, 3-4-3) formation; players claim open slots on a
   live pitch view (realtime via Supabase).
-- **Accounts** — sign up with an email and password; "Forgot password?" emails
-  a code (typed on any device) and a link that open a new-password screen.
+- **Accounts** — no passwords: sign up with a player name and email, and sign
+  in with a one-time code emailed to you (typed on any device).
 - **Photo cut-out** — "Remove Background" uses Google's MediaPipe selfie
   segmentation model (Apache 2.0), run in a hidden WebView on phones and in
   the page on the web. The engine (~9 MB) and model (~250 KB) download the
@@ -57,24 +57,24 @@ with your friends.
    your project refuses to create policies on `storage.objects` from the SQL
    editor, create the four policies by hand under **Storage → Policies** using
    the same conditions as the file.
-3. For a private friends-only app you may want to disable public signups or
-   enable email confirmation under **Authentication → Providers**.
-4. Password reset emails link back into the app, so tell Supabase where the
-   app lives under **Authentication → URL Configuration**:
+3. **Email.** Players sign in with a one-time code emailed to them (there
+   are no passwords), so email has to work:
+   - Connect your own email service under **Authentication → Emails → SMTP
+     Settings** (a Gmail account with an app password works: host
+     `smtp.gmail.com`, port `587`). Supabase's built-in sender only reaches
+     members of your Supabase team, sends a few emails an hour, and does not
+     let you edit the templates.
+   - Paste `supabase/email-templates/magic-link.html` into **Authentication →
+     Emails → Magic Link** and `supabase/email-templates/confirm-signup.html`
+     into **Confirm signup** (source/HTML view), and save. These put the code
+     in the email; the default templates only carry a link.
+4. The email also carries a link that signs the player in on the device that
+   asked. Tell Supabase where the app lives under **Authentication → URL
+   Configuration**:
    - **Site URL**: `http://localhost:8081` (the Expo web address while
      developing; your real web address once it is hosted).
    - **Redirect URLs**: add `http://localhost:8081/**`, `exp://**` (Expo Go)
      and `squadbuilder://**` (an installed build).
-
-   Without these, Supabase sends the link to its default `localhost:3000`,
-   where nothing is running.
-5. So the reset email carries a code that works on any device (the link only
-   opens on the device that asked), paste
-   `supabase/email-templates/reset-password.html` into **Authentication →
-   Emails → Reset Password** (switch the editor to its source/HTML view) and
-   save. The subject can be "Reset your Squad Builder password". The built-in email service only sends a few
-   emails an hour; set up your own SMTP under **Authentication → Emails** if
-   players need more.
 
 ### 2. App
 

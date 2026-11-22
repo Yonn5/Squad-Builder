@@ -15,68 +15,50 @@ import {
 } from "../lib/authLinks";
 import { supabase } from "../lib/supabase";
 
-/**
- * Where a password-reset link has got to:
- *   idle     no link opened
- *   working  signing in with the link
- *   ready    signed in from the link or code; the player now picks a new
- *            password
- *   failed   the link was expired, used or broken (message says which)
- */
-export type Recovery =
-  | { status: "idle" }
-  | { status: "working" }
-  | { status: "ready" }
-  | { status: "failed"; message: string };
-
 type AuthContextValue = {
   session: Session | null;
   loading: boolean;
-  recovery: Recovery;
-  /** Signed in with a reset code: go and pick a new password. */
-  startRecovery: () => void;
-  clearRecovery: () => void;
+  /** Why a sign-in link from an email could not be used, if it couldn't. */
+  linkError: string | null;
+  clearLinkError: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   loading: true,
-  recovery: { status: "idle" },
-  startRecovery: () => {},
-  clearRecovery: () => {},
+  linkError: null,
+  clearLinkError: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [recovery, setRecovery] = useState<Recovery>({ status: "idle" });
+  const [linkError, setLinkError] = useState<string | null>(null);
 
-  /** Signs in with the tokens on a reset link, if the URL carries one. */
+  /**
+   * Signing in is by a code typed into the app, but the email also carries
+   * a link: opened on the same device, it signs the player in directly.
+   */
   const openLink = useCallback(async (url: string | null) => {
     const link = parseAuthLink(url);
     if (!link) return;
     clearUrlTokens();
     if (link.errorCode || !link.accessToken || !link.refreshToken) {
-      setRecovery({ status: "failed", message: describeLinkError(link) });
+      setLinkError(describeLinkError(link));
       return;
     }
-    setRecovery({ status: "working" });
     const { error } = await supabase.auth.setSession({
       access_token: link.accessToken,
       refresh_token: link.refreshToken,
     });
-    setRecovery(
-      error
-        ? { status: "failed", message: describeLinkError({ errorCode: "otp_expired" }) }
-        : { status: "ready" },
-    );
+    if (error) setLinkError(describeLinkError({ errorCode: "otp_expired" }));
   }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
     });
-    // A reset link that opened the app is used before anything else, so the
+    // A link that opened the app is used before anything else, so the
     // sign-in screen never flashes up in between.
     (async () => {
       try {
@@ -98,11 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [openLink]);
 
-  const startRecovery = useCallback(() => setRecovery({ status: "ready" }), []);
-  const clearRecovery = useCallback(() => setRecovery({ status: "idle" }), []);
+  const clearLinkError = useCallback(() => setLinkError(null), []);
 
   return (
-    <AuthContext.Provider value={{ session, loading, recovery, startRecovery, clearRecovery }}>
+    <AuthContext.Provider value={{ session, loading, linkError, clearLinkError }}>
       {children}
     </AuthContext.Provider>
   );

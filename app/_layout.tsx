@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { View } from "react-native";
 import { DialogHost } from "../src/components/DialogHost";
 import { Loading } from "../src/components/ui";
+import { showAlert } from "../src/lib/alert";
 import { ALL_ICON_IMAGES } from "../src/constants/playstyleIcons";
 import { silenceHandledNetworkLogs } from "../src/lib/quietNetworkLogs";
 import { applyWebViewportFixes } from "../src/lib/webViewport";
@@ -16,29 +17,26 @@ import { colors } from "../src/theme";
 silenceHandledNetworkLogs();
 
 function RootNavigator() {
-  const { session, loading, recovery } = useAuth();
+  const { session, loading, linkError, clearLinkError } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
-    const onResetScreen = segments[0] === "reset-password";
-    // A reset link always ends up on the new-password screen, even when
-    // Supabase sent it to the home page instead.
-    if (recovery.status !== "idle") {
-      if (!onResetScreen) router.replace("/reset-password");
-      return;
-    }
-    if (onResetScreen) return; // open whether signed in or not
     const inAuthGroup = segments[0] === "(auth)";
     if (!session && !inAuthGroup) {
       router.replace("/sign-in");
-    } else if (session && inAuthGroup && (segments as string[])[1] !== "forgot-password") {
-      // (Entering a reset code signs the player in a moment before the
-      // new-password screen is opened, so that screen is left alone.)
+    } else if (session && inAuthGroup) {
       router.replace("/");
     }
-  }, [session, loading, recovery.status, segments, router]);
+  }, [session, loading, segments, router]);
+
+  // A sign-in link from an email that had expired or was already used.
+  useEffect(() => {
+    if (!linkError) return;
+    showAlert("Sign-in link", linkError);
+    clearLinkError();
+  }, [linkError, clearLinkError]);
 
   if (loading) {
     return (
